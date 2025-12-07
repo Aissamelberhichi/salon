@@ -1,0 +1,3 @@
+npx prisma studio == http://localhost:5555
+
+run frend end = npm run dev
