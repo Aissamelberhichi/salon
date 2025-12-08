@@ -6,6 +6,12 @@ import { Login } from './pages/Login';
 import { RegisterClient } from './pages/RegisterClient';
 import { RegisterSalon } from './pages/RegisterSalon';
 import { Dashboard } from './pages/Dashboard';
+import { CreateSalon } from './pages/salon/CreateSalon';
+import { SalonDashboard } from './pages/salon/SalonDashboard';
+import { SalonImages } from './pages/salon/SalonImages';
+import { SalonHours } from './pages/salon/SalonHours';
+import { SalonLocation } from './pages/salon/SalonLocation';
+import { SalonSettings } from './pages/salon/SalonSettings';
 
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -32,7 +38,26 @@ const PublicRoute = ({ children }) => {
     );
   }
 
-  return user ? <Navigate to="/dashboard" /> : children;
+  // Si l'utilisateur est déjà connecté, le rediriger selon son rôle
+  if (user) {
+    if (user.role === 'SALON_OWNER') {
+      return <Navigate to="/salon/dashboard" />;
+    }
+    return <Navigate to="/dashboard" />;
+  }
+
+  return children;
+};
+
+// Composant spécial pour la route /dashboard qui redirige selon le rôle
+const RoleBasedDashboard = () => {
+  const { user } = useAuth();
+  
+  if (user?.role === 'SALON_OWNER') {
+    return <Navigate to="/salon/dashboard" replace />;
+  }
+  
+  return <Dashboard />;
 };
 
 function AppRoutes() {
@@ -42,7 +67,17 @@ function AppRoutes() {
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/register-client" element={<PublicRoute><RegisterClient /></PublicRoute>} />
       <Route path="/register-salon" element={<PublicRoute><RegisterSalon /></PublicRoute>} />
-      <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
+      
+      {/* Dashboard principal - redirige selon le rôle */}
+      <Route path="/dashboard" element={<PrivateRoute><RoleBasedDashboard /></PrivateRoute>} />
+      
+      {/* Routes Salon (Sprint 2) */}
+      <Route path="/salon/create" element={<PrivateRoute><CreateSalon /></PrivateRoute>} />
+      <Route path="/salon/dashboard" element={<PrivateRoute><SalonDashboard /></PrivateRoute>} />
+      <Route path="/salon/images" element={<PrivateRoute><SalonImages /></PrivateRoute>} />
+      <Route path="/salon/hours" element={<PrivateRoute><SalonHours /></PrivateRoute>} />
+      <Route path="/salon/location" element={<PrivateRoute><SalonLocation /></PrivateRoute>} />
+      <Route path="/salon/settings" element={<PrivateRoute><SalonSettings /></PrivateRoute>} />
     </Routes>
   );
 }

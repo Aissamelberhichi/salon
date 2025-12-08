@@ -60,4 +60,16 @@ export const authAPI = {
   refresh: (refreshToken) => api.post('/auth/refresh', { refreshToken })
 };
 
+
+
+export const salonAPI = {
+  createSalon: (data) => api.post('/salons', data),
+  getMySalon: () => api.get('/salons/my/salon'),
+  updateSalon: (id, data) => api.put(`/salons/${id}`, data),
+  addImage: (id, data) => api.post(`/salons/${id}/images`, data),
+  deleteImage: (imageId) => api.delete(`/salons/images/${imageId}`),
+  updateHours: (id, hours) => api.put(`/salons/${id}/hours`, { hours }),
+  getAllSalons: (params) => api.get('/salons', { params }),
+  getSalonById: (id) => api.get(`/salons/${id}`)
+};
 export default api;
