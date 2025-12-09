@@ -12,6 +12,8 @@ import { SalonImages } from './pages/salon/SalonImages';
 import { SalonHours } from './pages/salon/SalonHours';
 import { SalonLocation } from './pages/salon/SalonLocation';
 import { SalonSettings } from './pages/salon/SalonSettings';
+import { SalonServices } from './pages/salon/SalonServices';
+import { SalonCoiffeurs } from './pages/salon/SalonCoiffeurs';
 
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -78,6 +80,8 @@ function AppRoutes() {
       <Route path="/salon/hours" element={<PrivateRoute><SalonHours /></PrivateRoute>} />
       <Route path="/salon/location" element={<PrivateRoute><SalonLocation /></PrivateRoute>} />
       <Route path="/salon/settings" element={<PrivateRoute><SalonSettings /></PrivateRoute>} />
+      <Route path="/salon/services" element={<PrivateRoute><SalonServices /></PrivateRoute>} />
+      <Route path="/salon/coiffeurs" element={<PrivateRoute><SalonCoiffeurs /></PrivateRoute>} />
     </Routes>
   );
 }

@@ -107,36 +107,73 @@ export const SalonDashboard = () => {
               {salon.isActive ? 'Actif' : 'Inactif'}
             </p>
           </div>
+            <div className="bg-white p-6 rounded-lg shadow">
+            <div className="text-3xl mb-2">✂️</div>
+            <h3 className="text-lg font-semibold mb-1">Services</h3>
+            <p className="text-3xl font-bold text-purple-600">
+              {salon.services?.filter(s => s.isActive).length || 0}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">services actifs</p>
+          </div>
+
+          <div className="bg-white p-6 rounded-lg shadow">
+            <div className="text-3xl mb-2">👨‍🦰</div>
+            <h3 className="text-lg font-semibold mb-1">Coiffeurs</h3>
+            <p className="text-3xl font-bold text-purple-600">
+              {salon.coiffeurs?.filter(c => c.isActive).length || 0}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">coiffeurs actifs</p>
+          </div>
         </div>
+        
 
         {/* Quick Actions */}
         <div className="bg-white rounded-lg shadow p-6 mb-8">
           <h2 className="text-xl font-bold mb-4">Actions disponibles (Sprint 2)</h2>
           <div className="grid md:grid-cols-2 gap-4">
+
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
               <div className="text-3xl mb-2">📸</div>
             <Button onClick={() => navigate('/salon/images')} className="w-full">
               Gérer les photos
             </Button>
             </div>
+
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
               <div className="text-3xl mb-2">⏰</div>
               <Button onClick={() => navigate('/salon/hours')} className="w-full">
                 Gérer les horaires
               </Button>
             </div>
+
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
               <div className="text-3xl mb-2">📍</div>
                 <Button onClick={() => navigate('/salon/location')} className="w-full">
                   Modifier la localisation
                 </Button>
             </div>
+
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
               <div className="text-3xl mb-2">⚙️</div>
                 <Button onClick={() => navigate('/salon/settings')} className="w-full">
                   ⚙️ Paramètres du salon
                 </Button>
             </div>
+            
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+              <div className="text-3xl mb-2">✂️</div>
+              <Button onClick={() => navigate('/salon/services')} className="w-full">
+                Gérer les services
+              </Button>
+            </div>
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+              <div className="text-3xl mb-2">👨‍🦰</div>
+              <Button onClick={() => navigate('/salon/coiffeurs')} className="w-full">
+                Gérer les coiffeurs
+              </Button>
+            </div>
+
+
           </div>
         </div>
 

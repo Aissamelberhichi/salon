@@ -105,21 +105,27 @@ class SalonService {
     return salon;
   }
 
-  async getMySalon(ownerId) {
-    const salon = await prisma.salon.findUnique({
-      where: { ownerId },
-      include: {
-        images: {
-          orderBy: { order: 'asc' }
-        },
-        hours: {
-          orderBy: { dayOfWeek: 'asc' }
-        }
+async getMySalon(ownerId) {
+  const salon = await prisma.salon.findUnique({
+    where: { ownerId },
+    include: {
+      images: {
+        orderBy: { order: 'asc' }
+      },
+      hours: {
+        orderBy: { dayOfWeek: 'asc' }
+      },
+      services: {
+        orderBy: { name: 'asc' }
+      },
+      coiffeurs: {
+        orderBy: { fullName: 'asc' }
       }
-    });
+    }
+  });
 
-    return salon;
-  }
+  return salon;
+}
 
   async addImage(salonId, ownerId, imageData) {
     const salon = await prisma.salon.findUnique({

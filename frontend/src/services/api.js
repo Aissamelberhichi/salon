@@ -72,4 +72,22 @@ export const salonAPI = {
   getAllSalons: (params) => api.get('/salons', { params }),
   getSalonById: (id) => api.get(`/salons/${id}`)
 };
+// Ajouter après salonAPI
+
+export const serviceAPI = {
+  getServicesBySalon: (salonId, includeInactive = false) => 
+    api.get(`/services/${salonId}`, { params: { includeInactive } }),
+  createService: (salonId, data) => api.post(`/services/${salonId}`, data),
+  updateService: (id, data) => api.put(`/services/${id}`, data),
+  deleteService: (id) => api.delete(`/services/${id}`)
+};
+
+export const coiffeurAPI = {
+  getCoiffeursBySalon: (salonId, includeInactive = false) => 
+    api.get(`/coiffeurs/${salonId}`, { params: { includeInactive } }),
+  createCoiffeur: (salonId, data) => api.post(`/coiffeurs/${salonId}`, data),
+  updateCoiffeur: (id, data) => api.put(`/coiffeurs/${id}`, data),
+  deleteCoiffeur: (id) => api.delete(`/coiffeurs/${id}`)
+};
+
 export default api;
