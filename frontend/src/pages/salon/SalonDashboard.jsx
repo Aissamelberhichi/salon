@@ -172,7 +172,12 @@ export const SalonDashboard = () => {
                 Gérer les coiffeurs
               </Button>
             </div>
-
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+              <div className="text-3xl mb-2">📅</div>
+                <Button onClick={() => navigate('/salon/reservations')} className="w-full">
+                  Voir les réservations
+                </Button>
+            </div>
 
           </div>
         </div>

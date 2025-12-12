@@ -20,7 +20,8 @@ class CoiffeurService {
         specialty: data.specialty,
         bio: data.bio,
         photo: data.photo,
-        isActive: data.isActive !== undefined ? data.isActive : true
+        isActive: data.isActive !== undefined ? data.isActive : true,
+        bufferMinutes: data.bufferMinutes !== undefined ? Number(data.bufferMinutes) : 5
       }
     });
 
@@ -66,6 +67,7 @@ class CoiffeurService {
         ...(data.bio !== undefined && { bio: data.bio }),
         ...(data.photo !== undefined && { photo: data.photo }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
+        ...(data.bufferMinutes !== undefined && { bufferMinutes: Number(data.bufferMinutes) }),
         updatedAt: new Date()
       }
     });

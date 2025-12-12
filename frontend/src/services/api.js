@@ -89,5 +89,27 @@ export const coiffeurAPI = {
   updateCoiffeur: (id, data) => api.put(`/coiffeurs/${id}`, data),
   deleteCoiffeur: (id) => api.delete(`/coiffeurs/${id}`)
 };
+// Ajouter après coiffeurAPI
+
+export const rdvAPI = {
+  // Public
+  getNearbySalons: (lat, lng, radius) => 
+    api.get('/rdv/salons/nearby', { params: { lat, lng, radius } }),
+  getAvailableSlots: (coiffeurId, date, serviceId) =>
+    api.get('/rdv/available-slots', { params: { coiffeurId, date, serviceId } }),
+  
+  // Client
+  createRendezVous: (data) => api.post('/rdv/book', data),
+  getMyReservations: (status) => api.get('/rdv/my-reservations', { params: { status } }),
+  updateRdvStatus: (id, status) => api.put(`/rdv/${id}/status`, { status }),
+  
+  // Salon
+  getSalonRendezVous: (salonId, status, date) => 
+    api.get(`/rdv/salon/${salonId}`, { params: { status, date } }),
+  getCoiffeurRendezVous: (coiffeurId, date) => 
+    api.get(`/rdv/coiffeur/${coiffeurId}`, { params: { date } }),
+  setCoiffeurDisponibilite: (coiffeurId, disponibilites) => 
+    api.post(`/rdv/coiffeur/${coiffeurId}/disponibilite`, { disponibilites })
+};
 
 export default api;

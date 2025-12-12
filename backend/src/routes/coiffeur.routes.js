@@ -21,6 +21,7 @@ const createCoiffeurValidation = [
   body('specialty').optional().trim(),
   body('bio').optional().trim(),
   body('photo').optional().isURL().withMessage('Valid photo URL required'),
+  body('bufferMinutes').optional().isInt({ min: 0, max: 120 }).withMessage('bufferMinutes must be between 0 and 120'),
   validate
 ];
 
@@ -32,6 +33,7 @@ const updateCoiffeurValidation = [
   body('bio').optional().trim(),
   body('photo').optional().isURL(),
   body('isActive').optional().isBoolean(),
+  body('bufferMinutes').optional().isInt({ min: 0, max: 120 }),
   validate
 ];
 

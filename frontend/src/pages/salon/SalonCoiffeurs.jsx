@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { salonAPI, coiffeurAPI } from '../../services/api';
+import { salonAPI, coiffeurAPI, rdvAPI } from '../../services/api';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
 
@@ -21,8 +21,33 @@ export const SalonCoiffeurs = () => {
     phone: '',
     specialty: '',
     bio: '',
-    photo: ''
+    photo: '',
+    breakDuration: 5
   });
+
+  // Availability modal state
+  const DAYS = [
+    { key: 'MONDAY', label: 'Lundi' },
+    { key: 'TUESDAY', label: 'Mardi' },
+    { key: 'WEDNESDAY', label: 'Mercredi' },
+    { key: 'THURSDAY', label: 'Jeudi' },
+    { key: 'FRIDAY', label: 'Vendredi' },
+    { key: 'SATURDAY', label: 'Samedi' },
+    { key: 'SUNDAY', label: 'Dimanche' }
+  ];
+  const defaultWeek = [
+    { dayOfWeek: 'MONDAY', startTime: '09:00', endTime: '18:00', isAvailable: true },
+    { dayOfWeek: 'TUESDAY', startTime: '09:00', endTime: '18:00', isAvailable: true },
+    { dayOfWeek: 'WEDNESDAY', startTime: '09:00', endTime: '18:00', isAvailable: true },
+    { dayOfWeek: 'THURSDAY', startTime: '09:00', endTime: '18:00', isAvailable: true },
+    { dayOfWeek: 'FRIDAY', startTime: '09:00', endTime: '18:00', isAvailable: true },
+    { dayOfWeek: 'SATURDAY', startTime: '10:00', endTime: '16:00', isAvailable: true },
+    { dayOfWeek: 'SUNDAY', startTime: '00:00', endTime: '00:00', isAvailable: false },
+  ];
+  const [availabilityModalOpen, setAvailabilityModalOpen] = useState(false);
+  const [availabilitySaving, setAvailabilitySaving] = useState(false);
+  const [selectedCoiffeur, setSelectedCoiffeur] = useState(null);
+  const [availability, setAvailability] = useState(defaultWeek);
 
   useEffect(() => {
     loadData();
@@ -50,17 +75,18 @@ export const SalonCoiffeurs = () => {
   };
 
   const handleEdit = (coiffeur) => {
-    setEditingCoiffeur(coiffeur);
-    setFormData({
-      fullName: coiffeur.fullName,
-      email: coiffeur.email || '',
-      phone: coiffeur.phone || '',
-      specialty: coiffeur.specialty || '',
-      bio: coiffeur.bio || '',
-      photo: coiffeur.photo || ''
-    });
-    setShowForm(true);
-  };
+      setEditingCoiffeur(coiffeur);
+      setFormData({
+        fullName: coiffeur.fullName,
+        email: coiffeur.email || '',
+        phone: coiffeur.phone || '',
+        specialty: coiffeur.specialty || '',
+        bio: coiffeur.bio || '',
+        photo: coiffeur.photo || '',
+        bufferMinutes: coiffeur.bufferMinutes ?? 5
+      });
+      setShowForm(true);
+    };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -101,6 +127,36 @@ export const SalonCoiffeurs = () => {
       setCoiffeurs(coiffeurs.map(c => (c.id === data.id ? data : c)));
     } catch (err) {
       setError(err.response?.data?.error || 'Erreur');
+    }
+  };
+
+  // Availability UI handlers
+  const openAvailabilityModal = (coiffeur) => {
+    setSelectedCoiffeur(coiffeur);
+    // TODO: If you later expose a GET endpoint for existing disponibilités, prefetch here
+    setAvailability(defaultWeek);
+    setAvailabilityModalOpen(true);
+  };
+
+  const closeAvailabilityModal = () => {
+    setAvailabilityModalOpen(false);
+    setSelectedCoiffeur(null);
+  };
+
+  const updateDay = (dayKey, changes) => {
+    setAvailability(prev => prev.map(d => d.dayOfWeek === dayKey ? { ...d, ...changes } : d));
+  };
+
+  const handleSaveAvailability = async () => {
+    if (!selectedCoiffeur) return;
+    try {
+      setAvailabilitySaving(true);
+      await rdvAPI.setCoiffeurDisponibilite(selectedCoiffeur.id, availability);
+      closeAvailabilityModal();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Erreur lors de l\'enregistrement des disponibilités');
+    } finally {
+      setAvailabilitySaving(false);
     }
   };
 
@@ -216,6 +272,21 @@ export const SalonCoiffeurs = () => {
                 />
               </div>
 
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Pause entre RDV (minutes)</label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={120}
+                  value={formData.bufferMinutes}
+                  onChange={(e) => setFormData({ ...formData, bufferMinutes: Number(e.target.value) })}
+                  placeholder="5"
+                />
+                <p className="text-xs text-gray-500 mt-1">Temps de pause ajouté après chaque rendez-vous.</p>
+              </div>
+            </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Photo (URL)</label>
                 <Input
@@ -283,6 +354,11 @@ export const SalonCoiffeurs = () => {
                   <div className="p-4">
                     <h3 className="text-lg font-semibold mb-2">{coiffeur.fullName}</h3>
                     {coiffeur.specialty && <p className="text-sm text-purple-600 font-medium mb-2">{coiffeur.specialty}</p>}
+                    {coiffeur.breakDuration && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          ⏱️ Pause: {coiffeur.breakDuration} min
+                        </p>
+                      )}
                     {coiffeur.bio && <p className="text-sm text-gray-600 mb-3 line-clamp-2">{coiffeur.bio}</p>}
 
                     <div className="space-y-1 text-xs text-gray-600 mb-4">
@@ -304,6 +380,9 @@ export const SalonCoiffeurs = () => {
                       <Button variant="secondary" onClick={() => handleToggleActive(coiffeur)} className="flex-1 text-sm py-2">
                         {coiffeur.isActive ? '❌ Désactiver' : '✅ Activer'}
                       </Button>
+                      <Button variant="secondary" onClick={() => openAvailabilityModal(coiffeur)} className="flex-1 text-sm py-2">
+                        🗓 Disponibilités
+                      </Button>
                       <Button variant="secondary" onClick={() => handleEdit(coiffeur)} className="flex-1 text-sm py-2">
                         ✏️ Modifier
                       </Button>
@@ -318,6 +397,67 @@ export const SalonCoiffeurs = () => {
           )}
         </div>
       </div>
+
+      {/* Availability Modal */}
+      {availabilityModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={closeAvailabilityModal} />
+          <div className="relative bg-white w-full max-w-3xl mx-4 rounded-lg shadow-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold">Disponibilités • {selectedCoiffeur?.fullName}</h3>
+              <button onClick={closeAvailabilityModal} className="text-gray-500 hover:text-gray-700">✖</button>
+            </div>
+
+            <div className="space-y-4 max-h-[70vh] overflow-auto pr-1">
+              {DAYS.map((d) => {
+                const row = availability.find(a => a.dayOfWeek === d.key) || { dayOfWeek: d.key, isAvailable: false, startTime: '09:00', endTime: '18:00' };
+                return (
+                  <div key={d.key} className="grid grid-cols-12 items-center gap-3 border rounded-lg p-3">
+                    <div className="col-span-12 md:col-span-4 flex items-center gap-3">
+                      <input
+                        id={`chk-${d.key}`}
+                        type="checkbox"
+                        checked={row.isAvailable}
+                        onChange={(e) => updateDay(d.key, { isAvailable: e.target.checked })}
+                      />
+                      <label htmlFor={`chk-${d.key}`} className="font-medium">{d.label}</label>
+                    </div>
+                    <div className="col-span-6 md:col-span-4">
+                      <label className="block text-xs text-gray-600 mb-1">Début</label>
+                      <input
+                        type="time"
+                        value={row.startTime}
+                        disabled={!row.isAvailable}
+                        onChange={(e) => updateDay(d.key, { startTime: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg disabled:bg-gray-100"
+                      />
+                    </div>
+                    <div className="col-span-6 md:col-span-4">
+                      <label className="block text-xs text-gray-600 mb-1">Fin</label>
+                      <input
+                        type="time"
+                        value={row.endTime}
+                        disabled={!row.isAvailable}
+                        onChange={(e) => updateDay(d.key, { endTime: e.target.value })}
+                        className="w-full px-3 py-2 border rounded-lg disabled:bg-gray-100"
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <Button variant="secondary" onClick={closeAvailabilityModal}>
+                Annuler
+              </Button>
+              <Button onClick={handleSaveAvailability} loading={availabilitySaving}>
+                Enregistrer
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -39,37 +39,45 @@ export const Dashboard = () => {
             </Button>
           </div>
 
-          <div className="space-y-4">
-            <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+          <div className="space-y-4 mb-6">
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
               <span className="font-medium text-gray-700">Rôle</span>
               <span className={`px-3 py-1 rounded-full text-sm font-medium ${roleColors[user.role]}`}>
                 {roleLabels[user.role]}
               </span>
             </div>
 
-            <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
               <span className="font-medium text-gray-700">Email</span>
               <span className="text-gray-900">{user.email}</span>
             </div>
 
             {user.phone && (
-              <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                 <span className="font-medium text-gray-700">Téléphone</span>
                 <span className="text-gray-900">{user.phone}</span>
               </div>
             )}
+          </div>
 
-            <div className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-              <span className="font-medium text-gray-700">Statut</span>
-              <span className="text-green-600 font-medium">✓ Actif</span>
+          {/* Actions rapides pour Client */}
+          {user.role === 'CLIENT' && (
+            <div className="mt-6 space-y-3">
+              <h2 className="text-lg font-bold mb-3">Actions rapides</h2>
+              <Button onClick={() => navigate('/salons')} className="w-full">
+                🏪 Voir les salons
+              </Button>
+              <Button onClick={() => navigate('/my-reservations')} className="w-full">
+                📅 Mes réservations
+              </Button>
             </div>
+          )}
 
-            <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
-              <h3 className="font-semibold text-purple-900 mb-2">🎉 Sprint 1 Complété!</h3>
-              <p className="text-sm text-purple-800">
-                Authentification, gestion des rôles et protection des routes fonctionnels.
-              </p>
-            </div>
+          <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+            <h3 className="font-semibold text-purple-900 mb-2">🎉 Sprint 4 Complété!</h3>
+            <p className="text-sm text-purple-800">
+              Système de réservation fonctionnel avec gestion des rendez-vous.
+            </p>
           </div>
         </div>
       </div>

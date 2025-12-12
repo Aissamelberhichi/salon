@@ -14,6 +14,10 @@ import { SalonLocation } from './pages/salon/SalonLocation';
 import { SalonSettings } from './pages/salon/SalonSettings';
 import { SalonServices } from './pages/salon/SalonServices';
 import { SalonCoiffeurs } from './pages/salon/SalonCoiffeurs';
+import { SalonList } from './pages/client/SalonList';
+import { SalonDetail } from './pages/client/SalonDetail';
+import { MyReservations } from './pages/client/MyReservations';
+import { SalonReservations } from './pages/salon/SalonReservations';
 
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -50,7 +54,27 @@ const PublicRoute = ({ children }) => {
 
   return children;
 };
+const RoleRoute = ({ roles, children }) => {
+  const { user, loading } = useAuth();
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" />;
+  }
+
+  if (!roles.includes(user.role)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+};
 // Composant spécial pour la route /dashboard qui redirige selon le rôle
 const RoleBasedDashboard = () => {
   const { user } = useAuth();
@@ -74,14 +98,27 @@ function AppRoutes() {
       <Route path="/dashboard" element={<PrivateRoute><RoleBasedDashboard /></PrivateRoute>} />
       
       {/* Routes Salon (Sprint 2) */}
-      <Route path="/salon/create" element={<PrivateRoute><CreateSalon /></PrivateRoute>} />
-      <Route path="/salon/dashboard" element={<PrivateRoute><SalonDashboard /></PrivateRoute>} />
-      <Route path="/salon/images" element={<PrivateRoute><SalonImages /></PrivateRoute>} />
-      <Route path="/salon/hours" element={<PrivateRoute><SalonHours /></PrivateRoute>} />
-      <Route path="/salon/location" element={<PrivateRoute><SalonLocation /></PrivateRoute>} />
-      <Route path="/salon/settings" element={<PrivateRoute><SalonSettings /></PrivateRoute>} />
-      <Route path="/salon/services" element={<PrivateRoute><SalonServices /></PrivateRoute>} />
-      <Route path="/salon/coiffeurs" element={<PrivateRoute><SalonCoiffeurs /></PrivateRoute>} />
+      // Routes Salon
+      <Route path="/salon/create" element={<RoleRoute roles={['SALON_OWNER']}><CreateSalon /></RoleRoute>} />
+      <Route path="/salon/dashboard" element={<RoleRoute roles={['SALON_OWNER']}><SalonDashboard /></RoleRoute>} />
+      <Route path="/salon/images" element={<RoleRoute roles={['SALON_OWNER']}><SalonImages /></RoleRoute>} />
+      <Route path="/salon/hours" element={<RoleRoute roles={['SALON_OWNER']}><SalonHours /></RoleRoute>} />
+      <Route path="/salon/location" element={<RoleRoute roles={['SALON_OWNER']}><SalonLocation /></RoleRoute>} />
+      <Route path="/salon/settings" element={<RoleRoute roles={['SALON_OWNER']}><SalonSettings /></RoleRoute>} />
+      <Route path="/salon/services" element={<RoleRoute roles={['SALON_OWNER']}><SalonServices /></RoleRoute>} />
+      <Route path="/salon/coiffeurs" element={<RoleRoute roles={['SALON_OWNER']}><SalonCoiffeurs /></RoleRoute>} />
+      <Route path="/salon/reservations" element={<RoleRoute roles={['SALON_OWNER']}><SalonReservations /></RoleRoute>} />
+
+      // Routes Client (publiques/protégées)
+      {/* <Route path="/salons" element={<SalonList />} /> */}
+      <Route path="/salons" element={<RoleRoute roles={['CLIENT']}><SalonList /></RoleRoute>} />
+      {/* <Route path="/salon/:id" element={<SalonDetail />} /> */}
+      <Route path="/salon/:id" element={<RoleRoute roles={['CLIENT']}><SalonDetail /></RoleRoute>} />
+
+      {/* <Route path="/my-reservations" element={<PrivateRoute><MyReservations /></PrivateRoute>} /> */}
+      <Route path="/my-reservations" element={<RoleRoute roles={['CLIENT']}><MyReservations /></RoleRoute>} />
+      
+
     </Routes>
   );
 }
