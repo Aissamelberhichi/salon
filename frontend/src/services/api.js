@@ -61,6 +61,16 @@ export const authAPI = {
 };
 
 
+export const adminAPI = {
+  // Stats
+  getStats: () => api.get('/admin/stats'),
+  // Salons
+  listSalons: (params) => api.get('/admin/salons', { params }),
+  approveSalon: (id) => api.put(`/admin/salons/${id}/approve`),
+  toggleSalonActive: (id) => api.put(`/admin/salons/${id}/toggle`),
+  // Reservations
+  listReservations: (params) => api.get('/admin/reservations', { params })
+};
 
 export const salonAPI = {
   createSalon: (data) => api.post('/salons', data),

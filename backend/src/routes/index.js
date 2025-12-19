@@ -5,6 +5,7 @@ const salonRoutes = require('./salon.routes');
 const serviceRoutes = require('./service.routes');
 const coiffeurRoutes = require('./coiffeur.routes');
 const rdvRoutes = require('./rendezvous.routes');
+const adminRoutes = require('./admin.routes');
 
 const router = express.Router();
 
@@ -13,5 +14,6 @@ router.use('/salons', salonRoutes);
 router.use('/services', serviceRoutes);
 router.use('/coiffeurs', coiffeurRoutes);
 router.use('/rdv', rdvRoutes);
+router.use('/admin', adminRoutes);
 
 module.exports = router;

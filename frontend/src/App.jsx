@@ -18,6 +18,10 @@ import { SalonList } from './pages/client/SalonList';
 import { SalonDetail } from './pages/client/SalonDetail';
 import { MyReservations } from './pages/client/MyReservations';
 import { SalonReservations } from './pages/salon/SalonReservations';
+import { Navbar } from './components/layout/Navbar';
+import { AdminDashboard } from './pages/admin/AdminDashboard';
+import { AdminSalons } from './pages/admin/AdminSalons';
+import { AdminReservations } from './pages/admin/AdminReservations';
 
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -98,7 +102,7 @@ function AppRoutes() {
       <Route path="/dashboard" element={<PrivateRoute><RoleBasedDashboard /></PrivateRoute>} />
       
       {/* Routes Salon (Sprint 2) */}
-      // Routes Salon
+      {/* Routes Salon */}
       <Route path="/salon/create" element={<RoleRoute roles={['SALON_OWNER']}><CreateSalon /></RoleRoute>} />
       <Route path="/salon/dashboard" element={<RoleRoute roles={['SALON_OWNER']}><SalonDashboard /></RoleRoute>} />
       <Route path="/salon/images" element={<RoleRoute roles={['SALON_OWNER']}><SalonImages /></RoleRoute>} />
@@ -109,7 +113,7 @@ function AppRoutes() {
       <Route path="/salon/coiffeurs" element={<RoleRoute roles={['SALON_OWNER']}><SalonCoiffeurs /></RoleRoute>} />
       <Route path="/salon/reservations" element={<RoleRoute roles={['SALON_OWNER']}><SalonReservations /></RoleRoute>} />
 
-      // Routes Client (publiques/protégées)
+      {/* Routes Client (publiques/protégées) */}
       {/* <Route path="/salons" element={<SalonList />} /> */}
       <Route path="/salons" element={<RoleRoute roles={['CLIENT']}><SalonList /></RoleRoute>} />
       {/* <Route path="/salon/:id" element={<SalonDetail />} /> */}
@@ -117,8 +121,14 @@ function AppRoutes() {
 
       {/* <Route path="/my-reservations" element={<PrivateRoute><MyReservations /></PrivateRoute>} /> */}
       <Route path="/my-reservations" element={<RoleRoute roles={['CLIENT']}><MyReservations /></RoleRoute>} />
-      
+      <Route path="/admin" element={<RoleRoute roles={['ADMIN','SUPER_ADMIN']}><AdminDashboard /></RoleRoute>} />
 
+<Route path="/admin/salons" element={<RoleRoute roles={['ADMIN','SUPER_ADMIN']}><AdminSalons /></RoleRoute>} />
+<Route path="/admin/reservations" element={<RoleRoute roles={['ADMIN','SUPER_ADMIN']}><AdminReservations /></RoleRoute>} />
+
+{/* <Route path="/admin/salons" element={<RoleRoute roles={['ADMIN','SUPER_ADMIN']}><AdminSalons /></RoleRoute>} />
+<Route path="/admin/reservations" element={<RoleRoute roles={['ADMIN','SUPER_ADMIN']}><AdminReservations /></RoleRoute>} />
+ */}
     </Routes>
   );
 }
@@ -127,6 +137,7 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <Navbar />
         <AppRoutes />
       </AuthProvider>
     </BrowserRouter>

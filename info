@@ -1,3 +1,7 @@
 npx prisma studio == http://localhost:5555
 
 run frend end = npm run dev
+
+git add .
+git commit -m "Deuxième mise à jour du projet"
+git push origin main

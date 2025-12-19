@@ -77,12 +77,13 @@ class RendezVousService {
 
     const coiffeur = await prisma.coiffeur.findUnique({
       where: { id: coiffeurId },
-      select: { bufferMinutes: true }
+      select: { bufferMinutes: true, salon: { select: { isActive: true } } }
     });
-    if (!coiffeur) {
-      throw new Error('Coiffeur not found');
-    }
-    const buffer = coiffeur.bufferMinutes ?? 5;
+    if (!coiffeur) throw new Error('Coiffeur not found');
+    if (coiffeur.salon && coiffeur.salon.isActive === false) {
+        return [];
+      }
+const buffer = coiffeur.bufferMinutes ?? 5;
 
     const existingRdv = await prisma.rendezVous.findMany({
       where: {
@@ -127,7 +128,11 @@ class RendezVousService {
     if (!Array.isArray(serviceIds) || serviceIds.length === 0) {
       throw new Error('Au moins un service doit être sélectionné');
     }
-
+// Block booking if salon is deactivated
+const salonRecord = await prisma.salon.findUnique({ where: { id: salonId }, select: { isActive: true } });
+if (!salonRecord || salonRecord.isActive === false) {
+  throw new Error('Ce salon est désactivé. Réservation impossible.');
+}
     const services = await prisma.service.findMany({
       where: { 
         id: { in: serviceIds },

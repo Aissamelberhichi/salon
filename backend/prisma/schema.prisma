@@ -165,6 +165,17 @@ enum RendezVousStatus {
   NO_SHOW
 }
 
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+enum SalonType {
+  MEN
+  WOMEN
+  MIXED
+}
+
 enum DayOfWeek_DUP {
   MONDAY
   TUESDAY
