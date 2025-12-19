@@ -69,7 +69,10 @@ export const adminAPI = {
   approveSalon: (id) => api.put(`/admin/salons/${id}/approve`),
   toggleSalonActive: (id) => api.put(`/admin/salons/${id}/toggle`),
   // Reservations
-  listReservations: (params) => api.get('/admin/reservations', { params })
+  listReservations: (params) => api.get('/admin/reservations', { params }),
+
+  listClients: (params) => api.get('/admin/clients', { params }),
+  toggleClientActive: (id) => api.put(`/admin/clients/${id}/toggle`)
 };
 
 export const salonAPI = {

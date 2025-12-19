@@ -39,6 +39,21 @@ class AdminController {
       res.status(200).json(rdvs);
     } catch (e) { next(e); }
   }
+  async listClients(req, res, next) {
+  try {
+    const { q, isActive } = req.query;
+    const clients = await adminService.listClients({ q, isActive });
+    res.status(200).json(clients);
+  } catch (e) { next(e); }
+}
+
+async toggleClientActive(req, res, next) {
+  try {
+    const { id } = req.params;
+    const client = await adminService.toggleClientActive(id);
+    res.status(200).json(client);
+  } catch (e) { next(e); }
+}
 }
 
 module.exports = new AdminController();

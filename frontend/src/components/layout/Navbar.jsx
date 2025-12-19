@@ -87,6 +87,9 @@ export const Navbar = () => {
                     <Link to="/admin/reservations" className={`transition ${isActive('/admin/reservations')}`}>
                       📋 Réservations
                     </Link>
+                     <Link to="/admin/clients" className={`transition ${isActive('/admin/clients')}`}>
+                        👤 Clients
+                      </Link>
                   </>
                 ) : null}
                 {/* Menu utilisateur avec dropdown */}
@@ -286,6 +289,15 @@ export const Navbar = () => {
                     >
                       📋 Réservations
                     </Link>
+                    {user.role === 'SUPER_ADMIN' && (
+                    <Link
+                      to="/admin/clients"
+                      className="block px-4 py-3 text-gray-700 hover:bg-purple-50 rounded-lg"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      👤 Clients
+                    </Link>
+                  )}
                   </>
                 )}
 

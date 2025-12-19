@@ -22,6 +22,7 @@ import { Navbar } from './components/layout/Navbar';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { AdminSalons } from './pages/admin/AdminSalons';
 import { AdminReservations } from './pages/admin/AdminReservations';
+import { AdminClients } from './pages/admin/AdminClients';
 
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -125,7 +126,10 @@ function AppRoutes() {
 
 <Route path="/admin/salons" element={<RoleRoute roles={['ADMIN','SUPER_ADMIN']}><AdminSalons /></RoleRoute>} />
 <Route path="/admin/reservations" element={<RoleRoute roles={['ADMIN','SUPER_ADMIN']}><AdminReservations /></RoleRoute>} />
-
+<Route
+  path="/admin/clients"
+  element={<RoleRoute roles={['ADMIN','SUPER_ADMIN']}><AdminClients /></RoleRoute>}
+/>
 {/* <Route path="/admin/salons" element={<RoleRoute roles={['ADMIN','SUPER_ADMIN']}><AdminSalons /></RoleRoute>} />
 <Route path="/admin/reservations" element={<RoleRoute roles={['ADMIN','SUPER_ADMIN']}><AdminReservations /></RoleRoute>} />
  */}

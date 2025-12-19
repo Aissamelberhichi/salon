@@ -75,6 +75,36 @@ class AdminService {
         rdv.service?.duration || 0
     }));
   }
+  async listClients({ q, isActive }) {
+  const where = {
+    role: 'CLIENT',
+    ...(q && {
+      OR: [
+        { fullName: { contains: q, mode: 'insensitive' } },
+        { email: { contains: q, mode: 'insensitive' } },
+        { phone: { contains: q, mode: 'insensitive' } }
+      ]
+    }),
+    ...(isActive !== undefined ? { isActive: isActive === 'true' } : {})
+  };
+  return prisma.user.findMany({
+    where,
+    select: { id: true, fullName: true, email: true, phone: true, isActive: true, createdAt: true },
+    orderBy: { createdAt: 'desc' }
+  });
+}
+
+async toggleClientActive(id) {
+  const user = await prisma.user.findUnique({ where: { id }, select: { role: true, isActive: true } });
+  if (!user) throw new Error('Client not found');
+  if (user.role !== 'CLIENT') throw new Error('Only CLIENT accounts can be toggled');
+  return prisma.user.update({
+    where: { id },
+    data: { isActive: !user.isActive, updatedAt: new Date() },
+    select: { id: true, fullName: true, email: true, phone: true, isActive: true }
+  });
+}
+
 }
 
 module.exports = new AdminService();
