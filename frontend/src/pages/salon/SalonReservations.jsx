@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { salonAPI, rdvAPI } from '../../services/api';
+import { salonAPI, rdvAPI, clientScoreAPI } from '../../services/api';
 import { Button } from '../../components/common/Button';
 import { Input } from '../../components/common/Input';
 
@@ -12,14 +12,21 @@ export const SalonReservations = () => {
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('all');
   const [selectedDate, setSelectedDate] = useState('');
+  const [clientScores, setClientScores] = useState({});
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     loadData();
-  }, [filter, selectedDate]);
+  }, [filter, selectedDate, currentPage]);
 
   const loadData = async () => {
     try {
       setError('');
+      setLoading(true);
       const salonRes = await salonAPI.getMySalon();
       setSalon(salonRes.data);
       
@@ -29,7 +36,40 @@ export const SalonReservations = () => {
         statusParam,
         selectedDate || null
       );
-      setReservations(data);
+      
+      // Calculate pagination
+      const totalItems = data.length;
+      setTotalPages(Math.ceil(totalItems / itemsPerPage));
+      
+      // Get current page items
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage;
+      const paginatedData = data.slice(startIndex, endIndex);
+      
+      setReservations(paginatedData);
+      
+      // Load client scores for current page reservations
+      const clientIds = [...new Set(paginatedData.map(rdv => rdv.clientId))];
+      console.log('Loading scores for client IDs:', clientIds);
+      const scoresPromises = clientIds.map(async (clientId) => {
+        try {
+          const { data: scoreData } = await clientScoreAPI.getClientScore(clientId);
+          console.log(`Score loaded for client ${clientId}:`, scoreData);
+          return { clientId, score: scoreData };
+        } catch (err) {
+          console.error(`Error loading score for client ${clientId}:`, err);
+          return { clientId, score: null };
+        }
+      });
+      
+      const scoresData = await Promise.all(scoresPromises);
+      const scoresMap = scoresData.reduce((acc, { clientId, score }) => {
+        acc[clientId] = score;
+        return acc;
+      }, {});
+      
+      console.log('Final scores map:', scoresMap);
+      setClientScores(scoresMap);
     } catch (err) {
       setError(err.response?.data?.error || 'Erreur lors du chargement');
     } finally {
@@ -37,9 +77,33 @@ export const SalonReservations = () => {
     }
   };
 
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, selectedDate]);
+
   const handleUpdateStatus = async (rdvId, newStatus) => {
     try {
       await rdvAPI.updateRdvStatus(rdvId, newStatus);
+      
+      // Add scoring event if marked as NO_SHOW or LATE
+      if (newStatus === 'NO_SHOW' || newStatus === 'LATE') {
+        const rdv = reservations.find(r => r.id === rdvId);
+        if (rdv && rdv.clientId) {
+          try {
+            await clientScoreAPI.addClientEvent(rdv.clientId, newStatus, {
+              rdvId: rdvId,
+              salonId: salon?.id,
+              date: new Date().toISOString()
+            });
+            console.log(`${newStatus} event added for client:`, rdv.clientId);
+            alert(`Événement ${newStatus === 'NO_SHOW' ? 'Non présenté' : 'Retard'} ajouté avec succès !`);
+          } catch (scoreErr) {
+            console.error(`Error adding ${newStatus} event:`, scoreErr);
+          }
+        }
+      }
+      
       loadData();
     } catch (err) {
       setError(err.response?.data?.error || 'Erreur');
@@ -62,7 +126,6 @@ export const SalonReservations = () => {
     );
   };
 
-  // Fonction pour obtenir les détails des services
   const getServicesDetails = (rdv) => {
     if (rdv.services && rdv.services.length > 0) {
       return rdv.services.map(rs => ({
@@ -80,13 +143,131 @@ export const SalonReservations = () => {
     return [];
   };
 
-  // Calculer le total
   const getTotals = (rdv) => {
     const services = getServicesDetails(rdv);
     return {
       price: rdv.totalPrice ?? services.reduce((sum, s) => sum + s.price, 0),
       duration: rdv.totalDuration ?? services.reduce((sum, s) => sum + s.duration, 0)
     };
+  };
+
+  const getClientScoreDisplay = (clientId) => {
+    console.log(`Getting score display for client ${clientId}, available scores:`, clientScores);
+    const score = clientScores[clientId];
+    if (!score) return null;
+
+    const getLevelColor = (level) => {
+      switch (level) {
+        case 'RELIABLE': return 'text-green-600 bg-green-50 border-green-200';
+        case 'NORMAL': return 'text-blue-600 bg-blue-50 border-blue-200';
+        case 'AT_RISK': return 'text-red-600 bg-red-50 border-red-200';
+        default: return 'text-gray-600 bg-gray-50 border-gray-200';
+      }
+    };
+
+    const getLevelText = (level) => {
+      switch (level) {
+        case 'RELIABLE': return 'Fiable';
+        case 'NORMAL': return 'Normal';
+        case 'AT_RISK': return 'À risque';
+        default: return level;
+      }
+    };
+
+    return (
+      <div className={`px-3 py-2 rounded-lg border text-sm font-medium ${getLevelColor(score.level)}`}>
+        <div className="flex items-center gap-2">
+          <span className="font-bold">{score.score}</span>
+          <span>•</span>
+          <span>{getLevelText(score.level)}</span>
+          {score.requiresDeposit && (
+            <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">Dépôt requis</span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Pagination component
+  const Pagination = () => {
+    const getPageNumbers = () => {
+      const pages = [];
+      const maxVisible = 5;
+      
+      if (totalPages <= maxVisible) {
+        for (let i = 1; i <= totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        if (currentPage <= 3) {
+          for (let i = 1; i <= 4; i++) pages.push(i);
+          pages.push('...');
+          pages.push(totalPages);
+        } else if (currentPage >= totalPages - 2) {
+          pages.push(1);
+          pages.push('...');
+          for (let i = totalPages - 3; i <= totalPages; i++) pages.push(i);
+        } else {
+          pages.push(1);
+          pages.push('...');
+          pages.push(currentPage - 1);
+          pages.push(currentPage);
+          pages.push(currentPage + 1);
+          pages.push('...');
+          pages.push(totalPages);
+        }
+      }
+      
+      return pages;
+    };
+
+    if (totalPages <= 1) return null;
+
+    return (
+      <div className="flex items-center justify-center gap-2 mt-6">
+        <button
+          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+          disabled={currentPage === 1}
+          className={`px-3 py-2 rounded-lg font-medium transition ${
+            currentPage === 1
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+          }`}
+        >
+          ← Précédent
+        </button>
+
+        {getPageNumbers().map((page, index) => (
+          page === '...' ? (
+            <span key={`ellipsis-${index}`} className="px-2 text-gray-500">...</span>
+          ) : (
+            <button
+              key={page}
+              onClick={() => setCurrentPage(page)}
+              className={`px-4 py-2 rounded-lg font-medium transition ${
+                currentPage === page
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+              }`}
+            >
+              {page}
+            </button>
+          )
+        ))}
+
+        <button
+          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+          disabled={currentPage === totalPages}
+          className={`px-3 py-2 rounded-lg font-medium transition ${
+            currentPage === totalPages
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+          }`}
+        >
+          Suivant →
+        </button>
+      </div>
+    );
   };
 
   if (loading) {
@@ -164,107 +345,113 @@ export const SalonReservations = () => {
             <p className="text-gray-600">Aucune réservation</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {reservations.map((rdv) => {
-              const services = getServicesDetails(rdv);
-              const totals = getTotals(rdv);
-              
-              return (
-                <div key={rdv.id} className="bg-white rounded-lg shadow p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="text-lg font-bold">{rdv.client.fullName}</h3>
-                      
-                      {/* Affichage des services - UN PAR LIGNE */}
-                      <div className="mt-2 space-y-1">
-                        {services.map((service, index) => (
-                          <div key={index} className="text-sm bg-purple-50 px-3 py-1.5 rounded inline-block mr-2 mb-1">
-                            <span className="font-medium">{service.name}</span>
-                            <span className="text-gray-600 ml-2">
-                              {service.duration} min • {service.price} MAD
-                            </span>
+          <>
+            <div className="space-y-4">
+              {reservations.map((rdv) => {
+                const services = getServicesDetails(rdv);
+                const totals = getTotals(rdv);
+                
+                return (
+                  <div key={rdv.id} className="bg-white rounded-lg shadow p-6">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-lg font-bold">{rdv.client.fullName}</h3>
+                          {getClientScoreDisplay(rdv.clientId)}
+                        </div>
+                        
+                        <div className="mt-2 space-y-1">
+                          {services.map((service, index) => (
+                            <div key={index} className="text-sm bg-purple-50 px-3 py-1.5 rounded inline-block mr-2 mb-1">
+                              <span className="font-medium">{service.name}</span>
+                              <span className="text-gray-600 ml-2">
+                                {service.duration} min • {service.price} MAD
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        {services.length > 1 && (
+                          <div className="mt-2 text-sm font-semibold text-purple-700">
+                            Total: {totals.duration} min • {totals.price} MAD
                           </div>
-                        ))}
+                        )}
                       </div>
-                      
-                      {/* Total si plusieurs services */}
-                      {services.length > 1 && (
-                        <div className="mt-2 text-sm font-semibold text-purple-700">
-                          Total: {totals.duration} min • {totals.price} MAD
-                        </div>
-                      )}
-                    </div>
-                    {getStatusBadge(rdv.status)}
-                  </div>
-
-                  <div className="grid md:grid-cols-3 gap-4 mb-4">
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center gap-2">
-                        <span>📅</span>
-                        <span>{new Date(rdv.date).toLocaleDateString('fr-FR')}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span>⏰</span>
-                        <span>{rdv.startTime} - {rdv.endTime}</span>
-                      </div>
+                      {getStatusBadge(rdv.status)}
                     </div>
 
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center gap-2">
-                        <span>📱</span>
-                        <span>{rdv.client.phone || 'N/A'}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span>📧</span>
-                        <span>{rdv.client.email || 'N/A'}</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 text-sm">
-                      {rdv.coiffeur && (
+                    <div className="grid md:grid-cols-3 gap-4 mb-4">
+                      <div className="space-y-2 text-sm">
                         <div className="flex items-center gap-2">
-                          <span>💈</span>
-                          <span>{rdv.coiffeur.fullName}</span>
+                          <span>📅</span>
+                          <span>{new Date(rdv.date).toLocaleDateString('fr-FR')}</span>
                         </div>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <span>💵</span>
-                        <span className="font-medium">{totals.price} MAD</span>
+                        <div className="flex items-center gap-2">
+                          <span>⏰</span>
+                          <span>{rdv.startTime} - {rdv.endTime}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span>⏱</span>
-                        <span className="font-medium">{totals.duration} min</span>
+
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <span>📱</span>
+                          <span>{rdv.client.phone || 'N/A'}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span>📧</span>
+                          <span>{rdv.client.email || 'N/A'}</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 text-sm">
+                        {rdv.coiffeur && (
+                          <div className="flex items-center gap-2">
+                            <span>💈</span>
+                            <span>{rdv.coiffeur.fullName}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <span>💵</span>
+                          <span className="font-medium">{totals.price} MAD</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span>⏱</span>
+                          <span className="font-medium">{totals.duration} min</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="flex flex-wrap gap-2">
-                    {rdv.status === 'PENDING' && (
-                      <>
-                        <Button onClick={() => handleUpdateStatus(rdv.id, 'CONFIRMED')}>
-                          ✅ Confirmer
-                        </Button>
-                        <Button variant="danger" onClick={() => handleUpdateStatus(rdv.id, 'CANCELLED')}>
-                          ❌ Annuler
-                        </Button>
-                      </>
-                    )}
+                    <div className="flex flex-wrap gap-2">
+                      {rdv.status === 'PENDING' && (
+                        <>
+                          <Button onClick={() => handleUpdateStatus(rdv.id, 'CONFIRMED')}>
+                            ✅ Confirmer
+                          </Button>
+                          <Button variant="danger" onClick={() => handleUpdateStatus(rdv.id, 'CANCELLED')}>
+                            ❌ Annuler
+                          </Button>
+                        </>
+                      )}
 
-                    {rdv.status === 'CONFIRMED' && (
-                      <>
-                        <Button onClick={() => handleUpdateStatus(rdv.id, 'COMPLETED')}>
-                          ✔️ Terminer
-                        </Button>
-                        <Button variant="secondary" onClick={() => handleUpdateStatus(rdv.id, 'NO_SHOW')}>
-                          👻 Non présenté
-                        </Button>
-                      </>
-                    )}
+                      {rdv.status === 'CONFIRMED' && (
+                        <>
+                          <Button onClick={() => handleUpdateStatus(rdv.id, 'COMPLETED')}>
+                            ✔️ Terminer
+                          </Button>
+                          <Button variant="secondary" onClick={() => handleUpdateStatus(rdv.id, 'NO_SHOW')}>
+                            👻 Non présenté
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+
+            {/* Pagination Controls */}
+            <Pagination />
+          </>
         )}
       </div>
     </div>

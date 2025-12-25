@@ -339,6 +339,45 @@ if (!salonRecord || salonRecord.isActive === false) {
     }));
   }
 
+  async getRendezVousById(rdvId) {
+    const rdv = await prisma.rendezVous.findUnique({
+      where: { id: rdvId },
+      include: {
+        client: {
+          select: {
+            id: true,
+            fullName: true,
+            phone: true
+          }
+        },
+        service: true,
+        services: {
+          include: {
+            service: true
+          }
+        },
+        salon: true,
+        coiffeur: {
+          select: {
+            id: true,
+            fullName: true,
+            phone: true
+          }
+        }
+      }
+    });
+
+    if (!rdv) {
+      throw new Error('Reservation not found');
+    }
+
+    return {
+      ...rdv,
+      totalPrice: rdv.totalPrice ?? (rdv.services.reduce((sum, rs) => sum + rs.service.price, 0) || rdv.service?.price || 0),
+      totalDuration: rdv.totalDuration ?? (rdv.services.reduce((sum, rs) => sum + rs.service.duration, 0) || rdv.service?.duration || 0)
+    };
+  }
+
   async updateRendezVousStatus(rdvId, userId, newStatus, userRole) {
     const rdv = await prisma.rendezVous.findUnique({
       where: { id: rdvId },

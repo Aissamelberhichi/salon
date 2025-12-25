@@ -50,7 +50,7 @@ class AdminService {
 
   async listReservations({ status, date, salonId }) {
     const where = {
-      ...(status && { status }),
+      ...(status && status !== 'all' && { status }),
       ...(salonId && { salonId }),
       ...(date && { date: new Date(date) })
     };

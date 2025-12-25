@@ -107,6 +107,16 @@ async createRendezVous(req, res, next) {
     }
   }
 
+  async getRendezVousById(req, res, next) {
+    try {
+      const { id } = req.params;
+      const rdv = await rdvService.getRendezVousById(id);
+      res.status(200).json(rdv);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async setCoiffeurDisponibilite(req, res, next) {
     try {
       const { coiffeurId } = req.params;

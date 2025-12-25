@@ -14,6 +14,7 @@ import { SalonLocation } from './pages/salon/SalonLocation';
 import { SalonSettings } from './pages/salon/SalonSettings';
 import { SalonServices } from './pages/salon/SalonServices';
 import { SalonCoiffeurs } from './pages/salon/SalonCoiffeurs';
+import { SalonCaissiers } from './pages/salon/SalonCaissiers';
 import { SalonList } from './pages/client/SalonList';
 import { SalonDetail } from './pages/client/SalonDetail';
 import { MyReservations } from './pages/client/MyReservations';
@@ -23,6 +24,8 @@ import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { AdminSalons } from './pages/admin/AdminSalons';
 import { AdminReservations } from './pages/admin/AdminReservations';
 import { AdminClients } from './pages/admin/AdminClients';
+import { CaissierDashboard } from './pages/caissier/CaissierDashboard';
+import { CaissierPayment } from './pages/caissier/CaissierPayment';
 
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -88,6 +91,10 @@ const RoleBasedDashboard = () => {
     return <Navigate to="/salon/dashboard" replace />;
   }
   
+  if (user?.role === 'CAISSIER') {
+    return <Navigate to="/caissier/dashboard" replace />;
+  }
+  
   return <Dashboard />;
 };
 
@@ -112,6 +119,7 @@ function AppRoutes() {
       <Route path="/salon/settings" element={<RoleRoute roles={['SALON_OWNER']}><SalonSettings /></RoleRoute>} />
       <Route path="/salon/services" element={<RoleRoute roles={['SALON_OWNER']}><SalonServices /></RoleRoute>} />
       <Route path="/salon/coiffeurs" element={<RoleRoute roles={['SALON_OWNER']}><SalonCoiffeurs /></RoleRoute>} />
+      <Route path="/salon/caissiers" element={<RoleRoute roles={['SALON_OWNER']}><SalonCaissiers /></RoleRoute>} />
       <Route path="/salon/reservations" element={<RoleRoute roles={['SALON_OWNER']}><SalonReservations /></RoleRoute>} />
 
       {/* Routes Client (publiques/protégées) */}
@@ -122,6 +130,11 @@ function AppRoutes() {
 
       {/* <Route path="/my-reservations" element={<PrivateRoute><MyReservations /></PrivateRoute>} /> */}
       <Route path="/my-reservations" element={<RoleRoute roles={['CLIENT']}><MyReservations /></RoleRoute>} />
+
+      {/* Routes Caissier */}
+      <Route path="/caissier/dashboard" element={<RoleRoute roles={['CAISSIER']}><CaissierDashboard /></RoleRoute>} />
+      <Route path="/caissier/payment/:rdvId" element={<RoleRoute roles={['CAISSIER']}><CaissierPayment /></RoleRoute>} />
+
       <Route path="/admin" element={<RoleRoute roles={['ADMIN','SUPER_ADMIN']}><AdminDashboard /></RoleRoute>} />
 
 <Route path="/admin/salons" element={<RoleRoute roles={['ADMIN','SUPER_ADMIN']}><AdminSalons /></RoleRoute>} />

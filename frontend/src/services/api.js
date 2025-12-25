@@ -75,6 +75,22 @@ export const adminAPI = {
   toggleClientActive: (id) => api.put(`/admin/clients/${id}/toggle`)
 };
 
+export const reviewAPI = {
+  getSalonReviews: (salonId) => api.get(`/reviews/salons/${salonId}/reviews`),
+  createReview: (salonId, data) => api.post(`/reviews/salons/${salonId}/reviews`, data),
+  updateReview: (id, data) => api.put(`/reviews/reviews/${id}`, data),
+  deleteReview: (id) => api.delete(`/reviews/reviews/${id}`)
+};
+
+export const clientScoreAPI = {
+  getClientScore: (clientId) => api.get(`/client-score/clients/${clientId}/score`),
+  getClientHistory: (clientId, limit = 50) => api.get(`/client-score/clients/${clientId}/history`, { params: { limit } }),
+  checkDepositRequirement: (clientId) => api.get(`/client-score/clients/${clientId}/deposit-check`),
+  addClientEvent: (clientId, eventType, metadata = {}) => api.post(`/client-score/clients/${clientId}/events`, { eventType, metadata }),
+  getAllClientsScores: () => api.get(`/client-score/admin/clients/scores`),
+  resetClientScore: (clientId) => api.post(`/client-score/admin/clients/${clientId}/reset-score`)
+};
+
 export const salonAPI = {
   createSalon: (data) => api.post('/salons', data),
   getMySalon: () => api.get('/salons/my/salon'),
@@ -102,6 +118,15 @@ export const coiffeurAPI = {
   updateCoiffeur: (id, data) => api.put(`/coiffeurs/${id}`, data),
   deleteCoiffeur: (id) => api.delete(`/coiffeurs/${id}`)
 };
+
+// Ajouter après coiffeurAPI
+export const caissierAPI = {
+  getCaissiers: () => api.get('/caissiers'),
+  createCaissier: (data) => api.post('/caissiers', data),
+  updateCaissier: (id, data) => api.put(`/caissiers/${id}`, data),
+  toggleCaissierActive: (id) => api.put(`/caissiers/${id}/toggle`),
+  deleteCaissier: (id) => api.delete(`/caissiers/${id}`)
+};
 // Ajouter après coiffeurAPI
 
 export const rdvAPI = {
@@ -115,6 +140,7 @@ export const rdvAPI = {
   createRendezVous: (data) => api.post('/rdv/book', data),
   getMyReservations: (status) => api.get('/rdv/my-reservations', { params: { status } }),
   updateRdvStatus: (id, status) => api.put(`/rdv/${id}/status`, { status }),
+  getRdvById: (id) => api.get(`/rdv/${id}`),
   
   // Salon
   getSalonRendezVous: (salonId, status, date) => 

@@ -38,8 +38,11 @@ model User {
   updatedAt     DateTime  @updatedAt @map("updated_at")
   
   salon         Salon?    @relation("SalonOwner")
-  coiffeur      Coiffeur? // AJOUTER
-  rendezVous      RendezVous[]   @relation("ClientRendezVous")  // AJOUTER
+  caissierSalon Salon?    @relation("SalonCaissier")
+  coiffeur      Coiffeur? 
+  rendezVous      RendezVous[]   @relation("ClientRendezVous")  
+  reviewsGiven  Review[]  @relation("ClientReviews")
+  clientScore   ClientScore? @relation("ClientScore")
   
   @@map("users")
 }
@@ -47,6 +50,7 @@ model User {
 model Salon {
   id          String         @id @default(uuid())
   ownerId     String         @unique @map("owner_id")
+  caissierId  String?        @unique @map("caissier_id")
   name        String
   description String?
   address     String?
@@ -63,11 +67,13 @@ model Salon {
   updatedAt   DateTime       @updatedAt @map("updated_at")
   
   owner       User           @relation("SalonOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  caissier    User?          @relation("SalonCaissier", fields: [caissierId], references: [id], onDelete: SetNull)
   images      SalonImage[]
   hours       SalonHours[]
   services    Service[]     // AJOUTER
   coiffeurs   Coiffeur[]    // AJOUTER
   rendezVous  RendezVous[]    // AJOUTER
+  reviews     Review[]      @relation("SalonReviews")
 
   @@map("salons")
 }
@@ -227,4 +233,67 @@ model DisponibiliteCoiffeur {
   
   @@unique([coiffeurId, dayOfWeek])
   @@map("disponibilites_coiffeur")
+}
+model Review {
+  id        String   @id @default(uuid())
+  clientId  String   @map("client_id")
+  salonId   String   @map("salon_id")
+  rating    Int      // 1 to 5
+  comment   String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  client User   @relation("ClientReviews", fields: [clientId], references: [id], onDelete: Cascade)
+  salon  Salon  @relation("SalonReviews", fields: [salonId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, salonId]) // one review per client per salon
+  @@map("reviews")
+}
+
+// Client Scoring System
+enum ClientLevel {
+  RELIABLE
+  NORMAL
+  AT_RISK
+}
+
+enum EventType {
+  NO_SHOW
+  LATE
+  LATE_CANCELLATION
+  ON_TIME
+  EARLY_CANCELLATION
+  POSITIVE_REVIEW
+  NEGATIVE_REVIEW
+  FIRST_BOOKING
+  REPEAT_BOOKING
+}
+
+model ClientScore {
+  id        String      @id @default(uuid())
+  clientId  String      @unique @map("client_id")
+  score     Int         @default(100) // Base score 100
+  level     ClientLevel @default(NORMAL)
+  eventsCount Int       @default(0) @map("events_count")
+  requiresDeposit Boolean @default(false) @map("requires_deposit")
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  client User           @relation("ClientScore", fields: [clientId], references: [id], onDelete: Cascade)
+  events ClientEvent[]
+
+  @@map("client_scores")
+}
+
+model ClientEvent {
+  id         String    @id @default(uuid())
+  clientId   String    @map("client_id")
+  eventType  EventType @map("event_type")
+  scoreChange Int       @map("score_change")
+  metadata   Json?     // Additional event data (rdvId, reason, etc.)
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  client ClientScore @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("client_events")
 }

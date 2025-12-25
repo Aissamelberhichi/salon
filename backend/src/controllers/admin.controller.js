@@ -1,4 +1,5 @@
 const adminService = require('../services/admin.service');
+const prisma = require('../config/database');
 
 class AdminController {
   async getStats(req, res, next) {
@@ -35,7 +36,21 @@ class AdminController {
   async listReservations(req, res, next) {
     try {
       const { status, date, salonId } = req.query;
-      const rdvs = await adminService.listReservations({ status, date, salonId });
+
+      // Si l'utilisateur est un caissier, filtrer par son salon
+      let finalSalonId = salonId;
+      if (req.user.role === 'CAISSIER') {
+        // Trouver le salon du caissier
+        const salon = await prisma.salon.findFirst({
+          where: { caissierId: req.user.id }
+        });
+        if (!salon) {
+          return res.status(403).json({ error: 'Aucun salon assigné à ce caissier' });
+        }
+        finalSalonId = salon.id;
+      }
+
+      const rdvs = await adminService.listReservations({ status, date, salonId: finalSalonId });
       res.status(200).json(rdvs);
     } catch (e) { next(e); }
   }

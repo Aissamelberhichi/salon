@@ -6,6 +6,9 @@ const serviceRoutes = require('./service.routes');
 const coiffeurRoutes = require('./coiffeur.routes');
 const rdvRoutes = require('./rendezvous.routes');
 const adminRoutes = require('./admin.routes');
+const reviewRoutes = require('./review.routes');
+const clientScoreRoutes = require('./clientScore.routes');
+const caissierRoutes = require('./caissier.routes');
 
 const router = express.Router();
 
@@ -15,5 +18,8 @@ router.use('/services', serviceRoutes);
 router.use('/coiffeurs', coiffeurRoutes);
 router.use('/rdv', rdvRoutes);
 router.use('/admin', adminRoutes);
+router.use('/reviews', reviewRoutes); // or just add endpoints under /salons/:id/reviews as shown
+router.use('/client-score', clientScoreRoutes);
+router.use('/caissiers', caissierRoutes);
 
 module.exports = router;

@@ -1,0 +1,23 @@
+getScoreRules() {
+  return {
+    NO_SHOW: { change: -20, description: "Absence non justifiée" },      // -20 points
+    LATE: { change: -5, description: "Retard au rendez-vous" },          // -5 points  
+    LATE_CANCELLATION: { change: -10, description: "Annulation tardive" }, // -10 points
+    ON_TIME: { change: +2, description: "Présent à l'heure" },           // +2 points
+    EARLY_CANCELLATION: { change: +1, description: "Annulation anticipée" }, // +1 point
+    POSITIVE_REVIEW: { change: +3, description: "Avis positif (4-5 étoiles)" }, // +3 points
+    NEGATIVE_REVIEW: { change: -2, description: "Avis négatif (1-2 étoiles)" }, // -2 points
+    FIRST_BOOKING: { change: +5, description: "Premier rendez-vous" },   // +5 points
+    REPEAT_BOOKING: { change: +4, description: "Rendez-vous récurrent" } // +4 points
+  };
+}
+
+client_scores
+.
+Please tell us more (optional).
+Are you learning valuable information?
+Are the explanations of concepts clear?
+Is the instructor's delivery engaging?
+Are there enough opportunities to apply what you are learning?
+Is the course delivering on your expectations?
+Is the instructor knowledgeable about the topic?

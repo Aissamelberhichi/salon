@@ -74,6 +74,9 @@ export const Navbar = () => {
                     <Link to="/salon/coiffeurs" className={`transition ${isActive('/salon/coiffeurs')}`}>
                       👥 Coiffeurs
                     </Link>
+                    <Link to="/salon/caissiers" className={`transition ${isActive('/salon/caissiers')}`}>
+                      💰 Caissiers
+                    </Link>
                   </>
                 )}
               {user.role === 'ADMIN' || user.role === 'SUPER_ADMIN' ? (
@@ -152,6 +155,13 @@ export const Navbar = () => {
                             onClick={() => setIsDropdownOpen(false)}
                           >
                             📍 Localisation
+                          </Link>
+                          <Link
+                            to="/salon/caissiers"
+                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 transition"
+                            onClick={() => setIsDropdownOpen(false)}
+                          >
+                            💰 Gérer les Caissiers
                           </Link>
                           <div className="border-t border-gray-200 my-2"></div>
                         </>
@@ -255,6 +265,13 @@ export const Navbar = () => {
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
                       👥 Coiffeurs
+                    </Link>
+                    <Link
+                      to="/salon/caissiers"
+                      className="block px-4 py-3 text-gray-700 hover:bg-purple-50 rounded-lg"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      💰 Caissiers
                     </Link>
                     <Link
                       to="/salon/settings"

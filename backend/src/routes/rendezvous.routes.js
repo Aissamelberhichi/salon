@@ -49,6 +49,9 @@ router.get('/my-reservations', authenticate, authorize('CLIENT'), rdvController.
 router.get('/salon/:salonId', authenticate, authorize('SALON_OWNER', 'ADMIN'), rdvController.getSalonRendezVous);
 router.get('/coiffeur/:coiffeurId', authenticate, authorize('SALON_OWNER', 'COIFFEUR', 'ADMIN'), rdvController.getCoiffeurRendezVous);
 
+// Get single reservation
+router.get('/:id', authenticate, authorize('CLIENT', 'SALON_OWNER', 'COIFFEUR', 'ADMIN', 'CAISSIER'), rdvController.getRendezVousById);
+
 // Update status (client can cancel, salon can confirm/complete)
 router.put('/:id/status', authenticate, updateStatusValidation, rdvController.updateStatus);
 

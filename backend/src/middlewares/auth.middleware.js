@@ -3,6 +3,7 @@ const prisma = require('../config/database');
 
 const authenticate = async (req, res, next) => {
   try {
+    console.log('Auth middleware called for:', req.path);
     const authHeader = req.headers.authorization;
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -28,6 +29,21 @@ const authenticate = async (req, res, next) => {
       return res.status(401).json({ error: 'User not found or inactive' });
     }
 
+    // Pour les caissiers, ajouter les informations du salon
+    if (user.role === 'CAISSIER') {
+      const salon = await prisma.salon.findFirst({
+        where: { caissierId: user.id },
+        select: {
+          id: true,
+          name: true,
+          address: true,
+          city: true
+        }
+      });
+      user.salon = salon;
+    }
+
+    console.log('Authenticated user:', { id: user.id, role: user.role });
     req.user = user;
     next();
   } catch (error) {

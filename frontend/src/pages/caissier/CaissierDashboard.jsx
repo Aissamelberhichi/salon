@@ -1,0 +1,561 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { adminAPI, clientScoreAPI, rdvAPI } from '../../services/api';
+import { useAuth } from '../../hooks/useAuth';
+import { Button } from '../../components/common/Button';
+
+export const CaissierDashboard = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [todayReservations, setTodayReservations] = useState([]);
+  const [filteredReservations, setFilteredReservations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [stats, setStats] = useState({
+    totalToday: 0,
+    pending: 0,
+    confirmed: 0,
+    completed: 0,
+    cancelled: 0,
+    totalRevenue: 0
+  });
+
+  useEffect(() => {
+    loadTodayData();
+  }, []);
+
+  useEffect(() => {
+    filterReservations();
+  }, [todayReservations, statusFilter]);
+
+  const loadTodayData = async () => {
+    try {
+      setLoading(true);
+      const today = new Date().toISOString().split('T')[0];
+
+      // Get today's reservations
+      const { data: reservations } = await adminAPI.listReservations({
+        date: today
+      });
+
+      setTodayReservations(reservations);
+
+      // Calculate stats
+      const totalToday = reservations.length;
+      const pending = reservations.filter(r => r.status === 'PENDING').length;
+      const confirmed = reservations.filter(r => r.status === 'CONFIRMED').length;
+      const completed = reservations.filter(r => r.status === 'COMPLETED').length;
+      const cancelled = reservations.filter(r => r.status === 'CANCELLED').length;
+      const totalRevenue = reservations
+        .filter(r => r.status === 'COMPLETED')
+        .reduce((sum, r) => sum + (r.totalPrice || 0), 0);
+
+      setStats({
+        totalToday,
+        pending,
+        confirmed,
+        completed,
+        cancelled,
+        totalRevenue
+      });
+    } catch (err) {
+      setError(err.response?.data?.error || 'Erreur lors du chargement');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filterReservations = () => {
+    if (statusFilter === 'ALL') {
+      setFilteredReservations(todayReservations);
+    } else {
+      setFilteredReservations(todayReservations.filter(r => r.status === statusFilter));
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    const badges = {
+      PENDING: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: '⏳ En attente', icon: '⏰' },
+      CONFIRMED: { bg: 'bg-blue-100', text: 'text-blue-800', label: '✅ Confirmé', icon: '📅' },
+      CANCELLED: { bg: 'bg-red-100', text: 'text-red-800', label: '❌ Annulé', icon: '🚫' },
+      COMPLETED: { bg: 'bg-green-100', text: 'text-green-800', label: '✔️ Terminé', icon: '💰' },
+      NO_SHOW: { bg: 'bg-gray-100', text: 'text-gray-800', label: '👻 Non présenté', icon: '👤' }
+    };
+    const badge = badges[status] || badges.PENDING;
+    return (
+      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${badge.bg} ${badge.text} transition-all duration-200 hover:scale-105`}>
+        <span className="mr-1">{badge.icon}</span>
+        {badge.label}
+      </span>
+    );
+  };
+
+  const handleProcessPayment = (rdvId) => {
+    navigate(`/caissier/payment/${rdvId}`);
+  };
+
+  const handleStatusChange = async (rdvId, newStatus) => {
+    try {
+      await rdvAPI.updateRdvStatus(rdvId, newStatus);
+      
+      // Add scoring event if marked as NO_SHOW or LATE
+      if (newStatus === 'NO_SHOW' || newStatus === 'LATE') {
+        const rdv = todayReservations.find(r => r.id === rdvId);
+        if (rdv && rdv.clientId) {
+          try {
+            await clientScoreAPI.addClientEvent(rdv.clientId, newStatus, {
+              rdvId: rdvId,
+              salonId: user?.salonId || rdv.salonId,
+              date: new Date().toISOString()
+            });
+            console.log(`${newStatus} event added for client:`, rdv.clientId);
+            alert(`Événement ${newStatus === 'NO_SHOW' ? 'Non présenté' : 'Retard'} ajouté avec succès !`);
+          } catch (scoreErr) {
+            console.error(`Error adding ${newStatus} event:`, scoreErr);
+            alert(`Erreur lors de l'ajout de l'événement de score: ${scoreErr.response?.data?.error || scoreErr.message}`);
+          }
+        }
+      }
+      
+      await loadTodayData(); // Reload data
+    } catch (err) {
+      setError('Erreur lors de la mise à jour du statut');
+    }
+  };
+
+  const handlePrintReceipt = (rdv) => {
+    // Créer une nouvelle fenêtre pour l'impression du reçu
+    const printWindow = window.open('', '_blank', 'width=400,height=600');
+    
+    if (printWindow) {
+      // Calculer les services et montants
+      const services = rdv.services?.map(rs => ({
+        name: rs.service?.name || 'Service inconnu',
+        price: rs.service?.price || 0,
+        duration: rs.service?.duration || 0
+      })) || (rdv.service ? [{
+        name: rdv.service.name,
+        price: rdv.service.price,
+        duration: rdv.service.duration
+      }] : []);
+      
+      const subtotal = rdv.totalPrice || services.reduce((sum, s) => sum + s.price, 0);
+      // Pour le dashboard, on suppose que le total est égal au sous-total (pas de pourboire enregistré)
+      const totalAmount = subtotal;
+      
+      const receiptHTML = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Reçu de Paiement</title>
+          <style>
+            body {
+              font-family: 'Courier New', monospace;
+              font-size: 12px;
+              line-height: 1.4;
+              margin: 0;
+              padding: 10mm;
+              max-width: 80mm;
+            }
+            .header {
+              text-align: center;
+              border-bottom: 1px dashed #000;
+              padding-bottom: 10px;
+              margin-bottom: 15px;
+            }
+            .title {
+              font-size: 16px;
+              font-weight: bold;
+              margin-bottom: 5px;
+            }
+            .subtitle {
+              font-size: 10px;
+              margin-bottom: 5px;
+            }
+            .details {
+              margin-bottom: 15px;
+            }
+            .row {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 5px;
+            }
+            .services {
+              margin: 15px 0;
+              border-top: 1px dashed #000;
+              border-bottom: 1px dashed #000;
+              padding: 10px 0;
+            }
+            .service-item {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 5px;
+              font-size: 11px;
+            }
+            .total {
+              border-top: 2px solid #000;
+              padding-top: 10px;
+              margin-top: 10px;
+              font-weight: bold;
+              font-size: 14px;
+            }
+            .footer {
+              text-align: center;
+              margin-top: 20px;
+              font-size: 10px;
+              border-top: 1px dashed #000;
+              padding-top: 10px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="title">SALON DE COIFFURE</div>
+            <div class="subtitle">${user?.salon?.name || 'Salon'}</div>
+            <div class="subtitle">Reçu de Paiement</div>
+            <div class="subtitle">#${rdv.id} - ${new Date().toLocaleDateString('fr-FR')} ${new Date().toLocaleTimeString('fr-FR')}</div>
+          </div>
+          
+          <div class="details">
+            <div class="row">
+              <span>Client:</span>
+              <span>${rdv.client?.fullName || ''}</span>
+            </div>
+            <div class="row">
+              <span>Coiffeur:</span>
+              <span>${rdv.coiffeur?.fullName || 'Non assigné'}</span>
+            </div>
+            <div class="row">
+              <span>Date RDV:</span>
+              <span>${new Date(rdv.date).toLocaleDateString('fr-FR')}</span>
+            </div>
+            <div class="row">
+              <span>Heure:</span>
+              <span>${rdv.startTime} - ${rdv.endTime}</span>
+            </div>
+          </div>
+          
+          <div class="services">
+            ${services.map(service => `
+              <div class="service-item">
+                <span>${service.name}</span>
+                <span>${service.price} DH</span>
+              </div>
+            `).join('')}
+          </div>
+          
+          <div class="total">
+            <div class="row">
+              <span>Sous-total:</span>
+              <span>${subtotal} DH</span>
+            </div>
+            <div class="row">
+              <span>TOTAL:</span>
+              <span>${totalAmount} DH</span>
+            </div>
+            <div class="row">
+              <span>Statut:</span>
+              <span>Payé</span>
+            </div>
+          </div>
+          
+          <div class="footer">
+            <div>Merci pour votre visite !</div>
+            <div>À bientôt</div>
+          </div>
+        </body>
+        </html>
+      `;
+      
+      printWindow.document.write(receiptHTML);
+      printWindow.document.close();
+      printWindow.focus();
+      
+      // Attendre que le contenu soit chargé puis imprimer
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 500);
+    }
+  };
+
+  const StatCard = ({ title, value, icon, color, subtitle }) => (
+    <div className={`bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 border-l-4 ${color}`}>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
+          <p className="text-3xl font-bold text-gray-900">{value}</p>
+          {subtitle && <p className="text-sm text-gray-500 mt-1">{subtitle}</p>}
+        </div>
+        <div className="text-4xl opacity-80">{icon}</div>
+      </div>
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-blue-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 text-lg">Chargement du dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-50">
+      {/* Printable Report - Hidden on screen, visible when printing */}
+      <div className="print-report" style={{ display: 'none' }}>
+        <div style={{ fontFamily: 'Courier New, monospace', fontSize: '12px', lineHeight: '1.4', maxWidth: '80mm', margin: '0 auto', padding: '10mm' }}>
+          <div style={{ textAlign: 'center', borderBottom: '1px dashed #000', paddingBottom: '10px', marginBottom: '15px' }}>
+            <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '5px' }}>RAPPORT QUOTIDIEN</div>
+            <div style={{ fontSize: '10px', marginBottom: '5px' }}>{user?.salon?.name || 'Salon'}</div>
+            <div style={{ fontSize: '10px' }}>{new Date().toLocaleDateString('fr-FR')}</div>
+          </div>
+          
+          <div style={{ marginBottom: '15px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+              <span>Total réservations:</span>
+              <span>{stats.totalToday}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+              <span>En attente:</span>
+              <span>{stats.pending}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+              <span>Confirmés:</span>
+              <span>{stats.confirmed}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+              <span>Terminés:</span>
+              <span>{stats.completed}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+              <span>Annulés:</span>
+              <span>{stats.cancelled}</span>
+            </div>
+            <div style={{ borderTop: '2px solid #000', paddingTop: '10px', marginTop: '10px', fontWeight: 'bold' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Revenus totaux:</span>
+                <span>{stats.totalRevenue} DH</span>
+              </div>
+            </div>
+          </div>
+          
+          <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '10px', borderTop: '1px dashed #000', paddingTop: '10px' }}>
+            <div>Généré le {new Date().toLocaleString('fr-FR')}</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto p-6">
+        {/* Header */}
+        <div className="mb-8 animate-fade-in">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-4xl font-bold text-gray-900 mb-2">Dashboard Caissier</h1>
+              {user?.salon && (
+                <div className="flex items-center space-x-2">
+                  <span className="text-lg text-gray-600">Salon:</span>
+                  <span className="font-semibold text-purple-600 bg-purple-100 px-3 py-1 rounded-full">
+                    {user.salon.name}
+                  </span>
+                  {user.salon.city && (
+                    <span className="text-gray-500">• {user.salon.city}</span>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-gray-500">Aujourd'hui</p>
+              <p className="text-lg font-semibold text-gray-900">
+                {new Date().toLocaleDateString('fr-FR', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {error && (
+          <div className="bg-red-50 border-l-4 border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6 animate-slide-in">
+            <div className="flex items-center">
+              <span className="mr-2">⚠️</span>
+              {error}
+            </div>
+          </div>
+        )}
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
+          <StatCard
+            title="Total Aujourd'hui"
+            value={stats.totalToday}
+            icon="📊"
+            color="border-blue-500"
+          />
+          <StatCard
+            title="En Attente"
+            value={stats.pending}
+            icon="⏳"
+            color="border-yellow-500"
+          />
+          <StatCard
+            title="Confirmés"
+            value={stats.confirmed}
+            icon="✅"
+            color="border-blue-500"
+          />
+          <StatCard
+            title="Terminés"
+            value={stats.completed}
+            icon="💰"
+            color="border-green-500"
+          />
+          <StatCard
+            title="Annulés"
+            value={stats.cancelled}
+            icon="❌"
+            color="border-red-500"
+          />
+          <StatCard
+            title="Revenus"
+            value={`${stats.totalRevenue} DH`}
+            icon="💵"
+            color="border-purple-500"
+            subtitle="Aujourd'hui"
+          />
+        </div>
+
+        {/* Filters and Actions */}
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+            <div className="flex items-center space-x-4">
+              <h2 className="text-xl font-semibold text-gray-900">Réservations du Jour</h2>
+              <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm">
+                {filteredReservations.length} résultat{filteredReservations.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            <div className="flex items-center space-x-4">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all duration-200"
+              >
+                <option value="ALL">Tous les statuts</option>
+                <option value="PENDING">En attente</option>
+                <option value="CONFIRMED">Confirmés</option>
+                <option value="COMPLETED">Terminés</option>
+                <option value="CANCELLED">Annulés</option>
+              </select>
+              <Button
+                onClick={() => window.print()}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                🖨️ Imprimer Rapport
+              </Button>
+              <Button
+                onClick={loadTodayData}
+                className="bg-purple-600 hover:bg-purple-700"
+              >
+                🔄 Actualiser
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Today's Reservations */}
+        <div className="space-y-4">
+          {filteredReservations.length === 0 ? (
+            <div className="bg-white rounded-xl shadow-lg p-12 text-center">
+              <div className="text-6xl mb-4">📅</div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                {statusFilter === 'ALL' ? 'Aucune réservation' : 'Aucune réservation avec ce statut'}
+              </h3>
+              <p className="text-gray-500">
+                {statusFilter === 'ALL'
+                  ? 'Il n\'y a pas de réservations pour aujourd\'hui.'
+                  : `Il n\'y a pas de réservations ${statusFilter.toLowerCase()} pour aujourd\'hui.`
+                }
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {filteredReservations.map((rdv, index) => (
+                <div
+                  key={rdv.id}
+                  className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 animate-fade-in"
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
+                  <div className="p-6">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between space-y-4 lg:space-y-0">
+                      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                          <p className="text-sm text-gray-500 mb-1">Client</p>
+                          <p className="font-semibold text-gray-900">{rdv.client?.fullName}</p>
+                          <p className="text-sm text-gray-600">{rdv.client?.phone}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500 mb-1">Service(s)</p>
+                          <p className="font-medium text-gray-900">
+                            {rdv.services?.map(s => s.service?.name).join(', ') || rdv.service?.name || 'N/A'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500 mb-1">Horaires</p>
+                          <p className="font-medium text-gray-900">
+                            {rdv.startTime} - {rdv.endTime}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500 mb-1">Prix Total</p>
+                          <p className="font-bold text-lg text-green-600">
+                            {rdv.totalPrice || 0} DH
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
+                        {getStatusBadge(rdv.status)}
+                        <div className="flex space-x-2">
+                          {rdv.status === 'CONFIRMED' && (
+                            <Button
+                              onClick={() => handleProcessPayment(rdv.id)}
+                              className="bg-green-600 hover:bg-green-700 text-sm px-4 py-2"
+                            >
+                              💳 Paiement
+                            </Button>
+                          )}
+                          {rdv.status === 'PENDING' && (
+                            <Button
+                              onClick={() => handleStatusChange(rdv.id, 'CONFIRMED')}
+                              className="bg-blue-600 hover:bg-blue-700 text-sm px-4 py-2"
+                            >
+                              ✅ Confirmer
+                            </Button>
+                          )}
+                          {rdv.status === 'COMPLETED' && (
+                            <Button
+                              onClick={() => handlePrintReceipt(rdv)}
+                              className="bg-blue-600 hover:bg-blue-700 text-sm px-4 py-2"
+                            >
+                              🖨️ Reçu
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};

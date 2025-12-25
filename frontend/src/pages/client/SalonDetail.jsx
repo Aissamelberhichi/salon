@@ -3,7 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { salonAPI, serviceAPI, coiffeurAPI, rdvAPI } from '../../services/api';
 import { Input } from '../../components/common/Input';
 import { Button } from '../../components/common/Button';
+import { reviewAPI, clientScoreAPI } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
+
 
 export const SalonDetail = () => {
   const { id } = useParams();
@@ -25,6 +27,16 @@ export const SalonDetail = () => {
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [selectedServices, setSelectedServices] = useState([]); // MODIFIER: array au lieu de string
+
+  const [reviews, setReviews] = useState([]);
+  const [canReview, setCanReview] = useState(false);
+  const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
+  const [reviewError, setReviewError] = useState('');
+  const [reviewSuccess, setReviewSuccess] = useState('');
+
+  // Client scoring state
+  const [clientScore, setClientScore] = useState(null);
+  const [checkingScore, setCheckingScore] = useState(false);
 
   // Calculer durée et prix totaux
   const totalDuration = selectedServices.reduce((sum, serviceId) => {
@@ -49,6 +61,44 @@ export const SalonDetail = () => {
     }
   }, [selectedCoiffeur, selectedDate, selectedServices]);
 
+  useEffect(() => {
+  // Load reviews
+    reviewAPI.getSalonReviews(id).then(r => setReviews(r.data || [])).catch(() => {});
+    // Check if current user can review
+    if (user?.role === 'CLIENT') {
+      // Backend will check eligibility, we rely on that for now
+      setCanReview(true);
+    }
+  }, [id, user]);
+
+  // Load client score when user is available
+  useEffect(() => {
+    if (user?.role === 'CLIENT') {
+      const loadClientScore = async () => {
+        try {
+          const { data } = await clientScoreAPI.getClientScore(user.id);
+          setClientScore(data);
+        } catch (err) {
+          console.error('Error loading client score:', err);
+        }
+      };
+      loadClientScore();
+    }
+  }, [user]);
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault();
+    setReviewError(''); setReviewSuccess('');
+    try {
+      await reviewAPI.createReview(id, reviewForm);
+      setReviewSuccess('Avis ajouté !');
+      setReviewForm({ rating: 5, comment: '' });
+      // Reload reviews
+      const { data } = await reviewAPI.getSalonReviews(id);
+      setReviews(data || []);
+    } catch (e) {
+      setReviewError(e.response?.data?.error || 'Erreur');
+    }
+  };
   const loadData = async () => {
     try {
       const [salonRes, servicesRes, coiffeursRes] = await Promise.all([
@@ -98,6 +148,20 @@ export const SalonDetail = () => {
   setSubmitting(true);
 
   try {
+    // Check client score before booking
+    if (user.role === 'CLIENT' && clientScore) {
+      if (clientScore.requiresDeposit) {
+        const confirmBooking = window.confirm(
+          `Votre score de confiance est de ${clientScore.score} (${clientScore.level}).\n\n` +
+          `Un dépôt sera requis pour confirmer cette réservation.\n\n` +
+          `Voulez-vous continuer ?`
+        );
+        if (!confirmBooking) {
+          setSubmitting(false);
+          return;
+        }
+      }
+    }
     await rdvAPI.createRendezVous({
       salonId: id,
       serviceIds: selectedServices, // MODIFIER: array
@@ -280,7 +344,105 @@ const toggleService = (serviceId) => {
                 ))}
               </div>
             </div>
-          </div>
+                        {/* Reviews Section */}
+            <div className="bg-white rounded-lg shadow p-6 mb-6">
+              <h2 className="text-xl font-bold mb-4">Avis des clients</h2>
+              
+              {/* Affichage des avis existants */}
+              {reviews.length > 0 ? (
+                <div className="space-y-4 mb-6">
+                  {reviews.map((review) => (
+                    <div key={review.id} className="border-b pb-4">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="font-semibold">{review.client.fullName}</h4>
+                          <div className="flex items-center mb-2">
+                            {[...Array(5)].map((_, i) => (
+                              <svg
+                                key={i}
+                                className={`w-5 h-5 ${i < review.rating ? 'text-yellow-400' : 'text-gray-300'}`}
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                              >
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                              </svg>
+                            ))}
+                          </div>
+                          <p className="text-gray-600">{review.comment}</p>
+                        </div>
+                        <span className="text-sm text-gray-500">
+                          {new Date(review.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 mb-6">Aucun avis pour le moment.</p>
+              )}
+
+              {/* Formulaire d'avis */}
+              {user?.role === 'CLIENT' && (
+                <div className="mt-8">
+                  <h3 className="text-lg font-semibold mb-3">Laisser un avis</h3>
+                  {reviewError && (
+                    <div className="mb-4 p-3 bg-red-50 text-red-700 rounded">
+                      {reviewError}
+                    </div>
+                  )}
+                  {reviewSuccess && (
+                    <div className="mb-4 p-3 bg-green-50 text-green-700 rounded">
+                      {reviewSuccess}
+                    </div>
+                  )}
+                  <form onSubmit={handleReviewSubmit}>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Note
+                      </label>
+                      <div className="flex items-center">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <button
+                            key={star}
+                            type="button"
+                            onClick={() => setReviewForm({...reviewForm, rating: star})}
+                            className="p-1"
+                          >
+                            <svg
+                              className={`w-8 h-8 ${star <= reviewForm.rating ? 'text-yellow-400' : 'text-gray-300'}`}
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                            </svg>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Votre avis
+                      </label>
+                      <textarea
+                        value={reviewForm.comment}
+                        onChange={(e) => setReviewForm({...reviewForm, comment: e.target.value})}
+                        className="w-full p-2 border rounded-md"
+                        rows="3"
+                        placeholder="Décrivez votre expérience..."
+                        required
+                      ></textarea>
+                    </div>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
+                    >
+                      Envoyer l'avis
+                    </button>
+                  </form>
+                </div>
+              )}
+            </div>
+           </div>
 
           {/* Right: Booking Form */}
           <div className="lg:col-span-1">
