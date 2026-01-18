@@ -18,6 +18,7 @@ export const CaissierDashboard = () => {
     confirmed: 0,
     completed: 0,
     cancelled: 0,
+    late: 0,
     totalRevenue: 0
   });
 
@@ -47,6 +48,7 @@ export const CaissierDashboard = () => {
       const confirmed = reservations.filter(r => r.status === 'CONFIRMED').length;
       const completed = reservations.filter(r => r.status === 'COMPLETED').length;
       const cancelled = reservations.filter(r => r.status === 'CANCELLED').length;
+      const late = reservations.filter(r => r.status === 'LATE').length;
       const totalRevenue = reservations
         .filter(r => r.status === 'COMPLETED')
         .reduce((sum, r) => sum + (r.totalPrice || 0), 0);
@@ -57,6 +59,7 @@ export const CaissierDashboard = () => {
         confirmed,
         completed,
         cancelled,
+        late,
         totalRevenue
       });
     } catch (err) {
@@ -80,7 +83,8 @@ export const CaissierDashboard = () => {
       CONFIRMED: { bg: 'bg-blue-100', text: 'text-blue-800', label: '✅ Confirmé', icon: '📅' },
       CANCELLED: { bg: 'bg-red-100', text: 'text-red-800', label: '❌ Annulé', icon: '🚫' },
       COMPLETED: { bg: 'bg-green-100', text: 'text-green-800', label: '✔️ Terminé', icon: '💰' },
-      NO_SHOW: { bg: 'bg-gray-100', text: 'text-gray-800', label: '👻 Non présenté', icon: '👤' }
+      NO_SHOW: { bg: 'bg-gray-100', text: 'text-gray-800', label: '👻 Non présenté', icon: '👤' },
+      LATE: { bg: 'bg-orange-100', text: 'text-orange-800', label: '⏰ En retard', icon: '⏱️' }
     };
     const badge = badges[status] || badges.PENDING;
     return (
@@ -97,6 +101,16 @@ export const CaissierDashboard = () => {
 
   const handleStatusChange = async (rdvId, newStatus) => {
     try {
+      const previousRdv = todayReservations.find(r => r.id === rdvId);
+      const previousStatus = previousRdv?.status;
+      
+      // VÉRIFICATION ANTI-DOUBLON : Empêcher de marquer un RDV comme en retard plus d'une fois
+      // La base de données le détermine maintenant via le champ isLateMarked
+      if (newStatus === 'LATE' && previousRdv?.isLateMarked) {
+        alert('Ce rendez-vous a déjà été marqué comme en retard. Vous ne pouvez pas le marquer en retard une deuxième fois.');
+        return;
+      }
+      
       await rdvAPI.updateRdvStatus(rdvId, newStatus);
       
       // Add scoring event if marked as NO_SHOW or LATE
@@ -104,13 +118,16 @@ export const CaissierDashboard = () => {
         const rdv = todayReservations.find(r => r.id === rdvId);
         if (rdv && rdv.clientId) {
           try {
+            // Different scoring for NO_SHOW vs LATE
+            const scorePoints = newStatus === 'NO_SHOW' ? -20 : -5;
+            
             await clientScoreAPI.addClientEvent(rdv.clientId, newStatus, {
               rdvId: rdvId,
-              salonId: user?.salonId || rdv.salonId,
+              salonId: user?.salon?.id || rdv.salonId,
               date: new Date().toISOString()
             });
             console.log(`${newStatus} event added for client:`, rdv.clientId);
-            alert(`Événement ${newStatus === 'NO_SHOW' ? 'Non présenté' : 'Retard'} ajouté avec succès !`);
+            alert(`${newStatus === 'NO_SHOW' ? 'Non présenté' : 'Retard'} : ${scorePoints} points (${newStatus === 'NO_SHOW' ? '-20 points' : '-5 points'})`);
           } catch (scoreErr) {
             console.error(`Error adding ${newStatus} event:`, scoreErr);
             alert(`Erreur lors de l'ajout de l'événement de score: ${scoreErr.response?.data?.error || scoreErr.message}`);
@@ -118,9 +135,14 @@ export const CaissierDashboard = () => {
         }
       }
       
+      // Special handling for accepting late clients
+      if (previousStatus === 'LATE' && newStatus === 'CONFIRMED') {
+        alert('Client accepté malgré le retard. La pénalité de score reste appliquée comme avertissement.');
+      }
+      
       await loadTodayData(); // Reload data
     } catch (err) {
-      setError('Erreur lors de la mise à jour du statut');
+      setError(err.response?.data?.error || 'Erreur lors de la mise à jour du statut');
     }
   };
 
@@ -336,6 +358,10 @@ export const CaissierDashboard = () => {
               <span>Annulés:</span>
               <span>{stats.cancelled}</span>
             </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
+              <span>En retard:</span>
+              <span>{stats.late}</span>
+            </div>
             <div style={{ borderTop: '2px solid #000', paddingTop: '10px', marginTop: '10px', fontWeight: 'bold' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Revenus totaux:</span>
@@ -392,7 +418,7 @@ export const CaissierDashboard = () => {
         )}
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-6 mb-8">
           <StatCard
             title="Total Aujourd'hui"
             value={stats.totalToday}
@@ -424,6 +450,12 @@ export const CaissierDashboard = () => {
             color="border-red-500"
           />
           <StatCard
+            title="En Retard"
+            value={stats.late}
+            icon="⏰"
+            color="border-orange-500"
+          />
+          <StatCard
             title="Revenus"
             value={`${stats.totalRevenue} DH`}
             icon="💵"
@@ -452,19 +484,23 @@ export const CaissierDashboard = () => {
                 <option value="CONFIRMED">Confirmés</option>
                 <option value="COMPLETED">Terminés</option>
                 <option value="CANCELLED">Annulés</option>
+                <option value="LATE">En retard</option>
               </select>
               <Button
-                onClick={() => window.print()}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                🖨️ Imprimer Rapport
-              </Button>
-              <Button
-                onClick={loadTodayData}
-                className="bg-purple-600 hover:bg-purple-700"
-              >
-                🔄 Actualiser
-              </Button>
+  onClick={() => window.print()}
+  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded print:hidden"
+>
+  🖨️ Imprimer le rapport
+</Button>
+
+<Button
+  onClick={loadTodayData}
+  className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded"
+>
+  🔄 Actualiser
+</Button>
+
+
             </div>
           </div>
         </div>
@@ -522,28 +558,60 @@ export const CaissierDashboard = () => {
                       <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
                         {getStatusBadge(rdv.status)}
                         <div className="flex space-x-2">
-                          {rdv.status === 'CONFIRMED' && (
+                          {/* Boutons pour rendez-vous CONFIRMED qui n'ont pas encore été marqués en retard */}
+                          {rdv.status === 'CONFIRMED' && !rdv.isLateMarked && (
+                            <>
+                              <Button
+                                onClick={() => handleStatusChange(rdv.id, 'COMPLETED')}
+                                className="bg-green-600 hover:bg-green-700 text-sm px-4 py-2"
+                              >
+                                ✔️ Terminer
+                              </Button>
+                              <Button
+                                onClick={() => handleStatusChange(rdv.id, 'NO_SHOW')}
+                                className="bg-gray-500 hover:bg-gray-600 text-sm px-4 py-2"
+                              >
+                                👻 Non présenté
+                              </Button>
+                              <Button
+                                onClick={() => handleStatusChange(rdv.id, 'LATE')}
+                                className="bg-yellow-500 hover:bg-yellow-600 text-sm px-4 py-2"
+                              >
+                                ⏰ Retard
+                              </Button>
+                            </>
+                          )}
+                          {/* Boutons pour rendez-vous CONFIRMED qui ont déjà été marqués en retard (pas de bouton Retard) */}
+                          {rdv.status === 'CONFIRMED' && rdv.isLateMarked && (
+                            <Button
+                              onClick={() => handleStatusChange(rdv.id, 'COMPLETED')}
+                              className="bg-green-600 hover:bg-green-700 text-sm px-4 py-2"
+                            >
+                              ✔️ Terminer
+                            </Button>
+                          )}
+                          {rdv.status === 'LATE' && (
+                            <>
+                              <Button
+                                onClick={() => handleStatusChange(rdv.id, 'NO_SHOW')}
+                                className="bg-gray-500 hover:bg-gray-600 text-sm px-4 py-2"
+                              >
+                                👻 Non présenté
+                              </Button>
+                              <Button
+                                onClick={() => handleStatusChange(rdv.id, 'CONFIRMED')}
+                                className="bg-blue-600 hover:bg-blue-700 text-sm px-4 py-2"
+                              >
+                                ✅ Accepter quand même
+                              </Button>
+                            </>
+                          )}
+                          {rdv.status === 'COMPLETED' && (
                             <Button
                               onClick={() => handleProcessPayment(rdv.id)}
                               className="bg-green-600 hover:bg-green-700 text-sm px-4 py-2"
                             >
                               💳 Paiement
-                            </Button>
-                          )}
-                          {rdv.status === 'PENDING' && (
-                            <Button
-                              onClick={() => handleStatusChange(rdv.id, 'CONFIRMED')}
-                              className="bg-blue-600 hover:bg-blue-700 text-sm px-4 py-2"
-                            >
-                              ✅ Confirmer
-                            </Button>
-                          )}
-                          {rdv.status === 'COMPLETED' && (
-                            <Button
-                              onClick={() => handlePrintReceipt(rdv)}
-                              className="bg-blue-600 hover:bg-blue-700 text-sm px-4 py-2"
-                            >
-                              🖨️ Reçu
                             </Button>
                           )}
                         </div>

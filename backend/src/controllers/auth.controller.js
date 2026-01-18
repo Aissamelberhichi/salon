@@ -40,7 +40,26 @@ class AuthController {
 
   async getMe(req, res, next) {
     try {
-      res.status(200).json({ user: req.user });
+      let userData = req.user;
+
+      // Pour les caissiers, inclure les informations du salon
+      if (req.user.role === 'CAISSIER') {
+        const prisma = require('../config/database');
+        const salon = await prisma.salon.findFirst({
+          where: { caissierId: req.user.id },
+          select: {
+            id: true,
+            name: true,
+            city: true,
+            address: true
+          }
+        });
+        if (salon) {
+          userData = { ...req.user, salon };
+        }
+      }
+
+      res.status(200).json({ user: userData });
     } catch (error) {
       next(error);
     }

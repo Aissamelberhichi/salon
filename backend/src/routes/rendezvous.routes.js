@@ -26,7 +26,7 @@ const createRdvValidation = [
 ];
 
 const updateStatusValidation = [
-  body('status').isIn(['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED', 'NO_SHOW']).withMessage('Valid status required'),
+  body('status').isIn(['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED', 'NO_SHOW', 'LATE']).withMessage('Valid status required'),
   validate
 ];
 

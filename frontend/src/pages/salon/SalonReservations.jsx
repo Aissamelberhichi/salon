@@ -84,6 +84,16 @@ export const SalonReservations = () => {
 
   const handleUpdateStatus = async (rdvId, newStatus) => {
     try {
+      const previousRdv = reservations.find(r => r.id === rdvId);
+      const previousStatus = previousRdv?.status;
+      
+      // VÉRIFICATION ANTI-DOUBLON : Empêcher de marquer un RDV comme en retard plus d'une fois
+      // La base de données le détermine maintenant via le champ isLateMarked
+      if (newStatus === 'LATE' && previousRdv?.isLateMarked) {
+        alert('Ce rendez-vous a déjà été marqué comme en retard. Vous ne pouvez pas le marquer en retard une deuxième fois.');
+        return;
+      }
+      
       await rdvAPI.updateRdvStatus(rdvId, newStatus);
       
       // Add scoring event if marked as NO_SHOW or LATE
@@ -91,17 +101,25 @@ export const SalonReservations = () => {
         const rdv = reservations.find(r => r.id === rdvId);
         if (rdv && rdv.clientId) {
           try {
+            // Different scoring for NO_SHOW vs LATE
+            const scorePoints = newStatus === 'NO_SHOW' ? -20 : -5;
+            
             await clientScoreAPI.addClientEvent(rdv.clientId, newStatus, {
               rdvId: rdvId,
               salonId: salon?.id,
               date: new Date().toISOString()
             });
             console.log(`${newStatus} event added for client:`, rdv.clientId);
-            alert(`Événement ${newStatus === 'NO_SHOW' ? 'Non présenté' : 'Retard'} ajouté avec succès !`);
+            alert(`${newStatus === 'NO_SHOW' ? 'Non présenté' : 'Retard'} : ${scorePoints} points (${newStatus === 'NO_SHOW' ? '-20 points' : '-5 points'})`);
           } catch (scoreErr) {
             console.error(`Error adding ${newStatus} event:`, scoreErr);
           }
         }
+      }
+      
+      // Special handling for accepting late clients
+      if (previousStatus === 'LATE' && newStatus === 'CONFIRMED') {
+        alert('Client accepté malgré le retard. La pénalité de score reste appliquée comme avertissement.');
       }
       
       loadData();
@@ -116,7 +134,8 @@ export const SalonReservations = () => {
       CONFIRMED: { bg: 'bg-green-100', text: 'text-green-800', label: '✅ Confirmé' },
       CANCELLED: { bg: 'bg-red-100', text: 'text-red-800', label: '❌ Annulé' },
       COMPLETED: { bg: 'bg-blue-100', text: 'text-blue-800', label: '✔️ Terminé' },
-      NO_SHOW: { bg: 'bg-gray-100', text: 'text-gray-800', label: '👻 Non présenté' }
+      NO_SHOW: { bg: 'bg-gray-100', text: 'text-gray-800', label: '👻 Non présenté' },
+      LATE: { bg: 'bg-orange-100', text: 'text-orange-800', label: '⏰ En retard' }
     };
     const badge = badges[status] || badges.PENDING;
     return (
@@ -320,7 +339,8 @@ export const SalonReservations = () => {
                 { value: 'all', label: 'Toutes' },
                 { value: 'PENDING', label: 'En attente' },
                 { value: 'CONFIRMED', label: 'Confirmées' },
-                { value: 'COMPLETED', label: 'Terminées' }
+                { value: 'COMPLETED', label: 'Terminées' },
+                { value: 'LATE', label: 'En retard' }
               ].map((f) => (
                 <button
                   key={f.value}
@@ -433,7 +453,8 @@ export const SalonReservations = () => {
                         </>
                       )}
 
-                      {rdv.status === 'CONFIRMED' && (
+                      {/* Boutons pour rendez-vous CONFIRMED qui n'ont pas encore été marqués en retard */}
+                      {rdv.status === 'CONFIRMED' && !rdv.isLateMarked && (
                         <>
                           <Button onClick={() => handleUpdateStatus(rdv.id, 'COMPLETED')}>
                             ✔️ Terminer
@@ -441,7 +462,34 @@ export const SalonReservations = () => {
                           <Button variant="secondary" onClick={() => handleUpdateStatus(rdv.id, 'NO_SHOW')}>
                             👻 Non présenté
                           </Button>
+                          <Button variant="secondary" onClick={() => handleUpdateStatus(rdv.id, 'LATE')}>
+                            ⏰ Retard
+                          </Button>
                         </>
+                      )}
+
+                      {/* Boutons pour rendez-vous CONFIRMED qui ont déjà été marqués en retard (pas de bouton Retard) */}
+                      {rdv.status === 'CONFIRMED' && rdv.isLateMarked && (
+                        <Button onClick={() => handleUpdateStatus(rdv.id, 'COMPLETED')}>
+                          ✔️ Terminer
+                        </Button>
+                      )}
+
+                      {rdv.status === 'LATE' && (
+                        <>
+                          <Button variant="secondary" onClick={() => handleUpdateStatus(rdv.id, 'NO_SHOW')}>
+                            👻 Non présenté
+                          </Button>
+                          <Button onClick={() => handleUpdateStatus(rdv.id, 'CONFIRMED')}>
+                            ✅ Accepter quand même
+                          </Button>
+                        </>
+                      )}
+
+                      {rdv.status === 'COMPLETED' && (
+                        <Button onClick={() => navigate(`/caissier/payment/${rdv.id}`)}>
+                          💳 Paiement
+                        </Button>
                       )}
                     </div>
                   </div>

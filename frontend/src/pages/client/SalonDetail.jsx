@@ -1,3 +1,4 @@
+// SalonDetail.jsx
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { salonAPI, serviceAPI, coiffeurAPI, rdvAPI } from '../../services/api';

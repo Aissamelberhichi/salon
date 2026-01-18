@@ -59,6 +59,60 @@ async function main() {
   });
   console.log('✅ Salon Owner created:', owner.email);
 
+  // Create Test Caissier for the salon
+  const caissierPassword = await bcrypt.hash('caissier123', 10);
+  const caissier = await prisma.user.upsert({
+    where: { email: 'caissier@test.com' },
+    update: {},
+    create: {
+      fullName: 'Test Caissier',
+      email: 'caissier@test.com',
+      phone: '+212600000004',
+      role: 'CAISSIER',
+      passwordHash: caissierPassword
+    }
+  });
+
+  // Assign caissier to salon
+  const salon = await prisma.salon.update({
+    where: { ownerId: owner.id },
+    data: { caissierId: caissier.id }
+  });
+  console.log('✅ Caissier created and assigned to salon:', caissier.email);
+
+  // Create test reservation for today
+  const today = new Date();
+  today.setHours(10, 0, 0, 0); // 10:00 AM today
+
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  await prisma.rendezVous.create({
+    data: {
+      clientId: client.id,
+      salonId: salon.id,
+      date: today,
+      startTime: '10:00',
+      endTime: '11:00',
+      status: 'CONFIRMED',
+      notes: 'Test reservation for caissier dashboard'
+    }
+  });
+
+  await prisma.rendezVous.create({
+    data: {
+      clientId: client.id,
+      salonId: salon.id,
+      date: tomorrow,
+      startTime: '14:00',
+      endTime: '15:00',
+      status: 'PENDING',
+      notes: 'Another test reservation'
+    }
+  });
+
+  console.log('✅ Test reservations created');
+
   console.log('🎉 Seed completed!');
 }
 

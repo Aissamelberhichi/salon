@@ -394,11 +394,21 @@ if (!salonRecord || salonRecord.isActive === false) {
     if (userRole === 'SALON_OWNER' && rdv.salon.ownerId !== userId) {
       throw new Error('Unauthorized');
     }
+    if (userRole === 'CAISSIER' && rdv.salon.caissierId !== userId) {
+      throw new Error('Unauthorized');
+    }
+
+    // Prevent marking as LATE if already marked as LATE
+    if (newStatus === 'LATE' && rdv.isLateMarked) {
+      throw new Error('Ce rendez-vous a déjà été marqué comme en retard.');
+    }
 
     const updated = await prisma.rendezVous.update({
       where: { id: rdvId },
       data: {
         status: newStatus,
+        // Set isLateMarked to true when status is changed to LATE
+        isLateMarked: newStatus === 'LATE' ? true : rdv.isLateMarked,
         updatedAt: new Date()
       },
       include: {

@@ -169,6 +169,7 @@ enum RendezVousStatus {
   CANCELLED
   COMPLETED
   NO_SHOW
+  LATE
 }
 
 enum Gender {
@@ -202,6 +203,7 @@ model RendezVous {
   startTime   String            @map("start_time")
   endTime     String            @map("end_time")
   status      RendezVousStatus  @default(PENDING)
+  isLateMarked Boolean          @default(false) @map("is_late_marked")
   notes       String?
   createdAt   DateTime          @default(now()) @map("created_at")
   updatedAt   DateTime          @updatedAt @map("updated_at")

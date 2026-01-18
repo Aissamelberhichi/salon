@@ -18,6 +18,8 @@ import { SalonCaissiers } from './pages/salon/SalonCaissiers';
 import { SalonList } from './pages/client/SalonList';
 import { SalonDetail } from './pages/client/SalonDetail';
 import { MyReservations } from './pages/client/MyReservations';
+import { FindSalons } from './pages/client/FindSalons';
+import SalonProfile from './pages/client/SalonProfile';
 import { SalonReservations } from './pages/salon/SalonReservations';
 import { Navbar } from './components/layout/Navbar';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
@@ -123,12 +125,10 @@ function AppRoutes() {
       <Route path="/salon/reservations" element={<RoleRoute roles={['SALON_OWNER']}><SalonReservations /></RoleRoute>} />
 
       {/* Routes Client (publiques/protégées) */}
-      {/* <Route path="/salons" element={<SalonList />} /> */}
-      <Route path="/salons" element={<RoleRoute roles={['CLIENT']}><SalonList /></RoleRoute>} />
-      {/* <Route path="/salon/:id" element={<SalonDetail />} /> */}
-      <Route path="/salon/:id" element={<RoleRoute roles={['CLIENT']}><SalonDetail /></RoleRoute>} />
-
-      {/* <Route path="/my-reservations" element={<PrivateRoute><MyReservations /></PrivateRoute>} /> */}
+      <Route path="/salons" element={<FindSalons />} />
+      <Route path="/salons/list" element={<SalonList />} />
+      <Route path="/salons/:id" element={<SalonProfile />} />
+      <Route path="/salons/:id/book" element={<SalonDetail />} />
       <Route path="/my-reservations" element={<RoleRoute roles={['CLIENT']}><MyReservations /></RoleRoute>} />
 
       {/* Routes Caissier */}

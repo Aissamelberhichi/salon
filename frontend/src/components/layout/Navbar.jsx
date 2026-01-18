@@ -1,6 +1,30 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  MagnifyingGlassIcon,
+  CalendarIcon,
+  ChartBarIcon,
+  ScissorsIcon,
+  UserGroupIcon,
+  Cog6ToothIcon,
+  BellIcon,
+  HeartIcon,
+  ShoppingBagIcon,
+  ArrowRightOnRectangleIcon,
+  Bars3Icon,
+  XMarkIcon,
+  MapPinIcon,
+  ClockIcon,
+  PhotoIcon,
+  CurrencyDollarIcon,
+  ShieldCheckIcon,
+  BuildingStorefrontIcon,
+  ClipboardDocumentListIcon,
+  UserIcon
+} from '@heroicons/react/24/outline';
+import { HeartIcon as HeartIconSolid, BellIcon as BellIconSolid } from '@heroicons/react/24/solid';
 
 export const Navbar = () => {
   const { user, logout } = useAuth();
@@ -8,13 +32,38 @@ export const Navbar = () => {
   const location = useLocation();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isFavoritesOpen, setIsFavoritesOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const notificationsRef = useRef(null);
+  const favoritesRef = useRef(null);
 
-  // Fermer le dropdown quand on clique à l'extérieur
+  // Données de notifications (exemple)
+  const notifications = [
+    { id: 1, type: 'booking', message: 'Votre réservation pour demain à 14h est confirmée', time: '5 min', unread: true },
+    { id: 2, type: 'reminder', message: 'N\'oubliez pas votre RDV chez Salon Elite', time: '1h', unread: true },
+    { id: 3, type: 'promo', message: 'Nouvelle offre : -20% sur les colorations', time: '2h', unread: false }
+  ];
+
+  // Données de favoris (exemple)
+  const favorites = [
+    { id: 1, name: 'Salon Elite', city: 'Casablanca', rating: 4.8 },
+    { id: 2, name: 'Beauty Corner', city: 'Rabat', rating: 4.6 },
+    { id: 3, name: 'Style Pro', city: 'Marrakech', rating: 4.9 }
+  ];
+
+  const unreadCount = notifications.filter(n => n.unread).length;
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsDropdownOpen(false);
+      }
+      if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
+        setIsNotificationsOpen(false);
+      }
+      if (favoritesRef.current && !favoritesRef.current.contains(event.target)) {
+        setIsFavoritesOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -28,163 +77,354 @@ export const Navbar = () => {
   };
 
   const isActive = (path) => {
-    return location.pathname === path ? 'text-purple-600 font-semibold' : 'text-gray-700 hover:text-purple-600';
+    return location.pathname === path;
+  };
+
+  const navLinkClass = (path) => {
+    return `flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${
+      isActive(path)
+        ? 'bg-purple-50 text-purple-600'
+        : 'text-gray-700 hover:bg-gray-50 hover:text-purple-600'
+    }`;
   };
 
   return (
-    <nav className="bg-white shadow-md sticky top-0 z-50">
-      <div className="container mx-auto px-4">
-        <div className="flex justify-between items-center h-16">
+    <nav className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-gray-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-20">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2">
-            <span className="text-2xl">💇</span>
-            <span className="text-xl font-bold text-gray-900">
-              Salon<span className="text-purple-600">Pro</span>
-            </span>
+          <Link to="/" className="flex items-center gap-3 group">
+            <div className="relative">
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/20 group-hover:shadow-xl group-hover:shadow-purple-500/30 transition-all">
+                <ScissorsIcon className="h-6 w-6 text-white" />
+              </div>
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
+            </div>
+            <div className="hidden sm:block">
+              <span className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                SalonPro
+              </span>
+              <p className="text-xs text-gray-500 -mt-1">Votre beauté, notre passion</p>
+            </div>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-6">
+          <div className="hidden lg:flex items-center gap-2">
             {user ? (
               <>
                 {/* Navigation pour CLIENT */}
                 {user.role === 'CLIENT' && (
                   <>
-                    <Link to="/salons" className={`transition ${isActive('/salons')}`}>
-                      🔍 Trouver un salon
+                    <Link to="/salons" className={navLinkClass('/salons')}>
+                      <MagnifyingGlassIcon className="h-5 w-5" />
+                      <span>Trouver un salon</span>
                     </Link>
-                    <Link to="/my-reservations" className={`transition ${isActive('/my-reservations')}`}>
-                      📅 Mes réservations
+                    <Link to="/my-reservations" className={navLinkClass('/my-reservations')}>
+                      <CalendarIcon className="h-5 w-5" />
+                      <span>Mes réservations</span>
                     </Link>
+
+                    {/* Favoris */}
+                    <div className="relative" ref={favoritesRef}>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => {
+                          setIsFavoritesOpen(!isFavoritesOpen);
+                          setIsNotificationsOpen(false);
+                        }}
+                        className="relative p-3 rounded-xl hover:bg-gray-50 transition-colors"
+                      >
+                        {favorites.length > 0 ? (
+                          <HeartIconSolid className="h-6 w-6 text-red-500" />
+                        ) : (
+                          <HeartIcon className="h-6 w-6 text-gray-600" />
+                        )}
+                        {favorites.length > 0 && (
+                          <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                            {favorites.length}
+                          </span>
+                        )}
+                      </motion.button>
+
+                      {/* Dropdown Favoris */}
+                      <AnimatePresence>
+                        {isFavoritesOpen && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 10 }}
+                            className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden"
+                          >
+                            <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-4">
+                              <h3 className="text-white font-bold text-lg">Mes Favoris</h3>
+                              <p className="text-white/80 text-sm">{favorites.length} salons</p>
+                            </div>
+                            <div className="max-h-96 overflow-y-auto">
+                              {favorites.length > 0 ? (
+                                favorites.map((salon) => (
+                                  <div
+                                    key={salon.id}
+                                    className="p-4 hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-100 last:border-0"
+                                    onClick={() => {
+                                      navigate(`/salons/${salon.id}`);
+                                      setIsFavoritesOpen(false);
+                                    }}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <h4 className="font-semibold text-gray-900">{salon.name}</h4>
+                                        <p className="text-sm text-gray-500">{salon.city}</p>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <span className="text-yellow-400">★</span>
+                                        <span className="text-sm font-medium">{salon.rating}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="p-8 text-center">
+                                  <HeartIcon className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+                                  <p className="text-gray-500 text-sm">Aucun favori pour le moment</p>
+                                </div>
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
+                    {/* Notifications */}
+                    <div className="relative" ref={notificationsRef}>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => {
+                          setIsNotificationsOpen(!isNotificationsOpen);
+                          setIsFavoritesOpen(false);
+                        }}
+                        className="relative p-3 rounded-xl hover:bg-gray-50 transition-colors"
+                      >
+                        {unreadCount > 0 ? (
+                          <BellIconSolid className="h-6 w-6 text-purple-600 animate-pulse" />
+                        ) : (
+                          <BellIcon className="h-6 w-6 text-gray-600" />
+                        )}
+                        {unreadCount > 0 && (
+                          <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-pulse">
+                            {unreadCount}
+                          </span>
+                        )}
+                      </motion.button>
+
+                      {/* Dropdown Notifications */}
+                      <AnimatePresence>
+                        {isNotificationsOpen && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 10 }}
+                            className="absolute right-0 mt-2 w-96 bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden"
+                          >
+                            <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-4">
+                              <h3 className="text-white font-bold text-lg">Notifications</h3>
+                              <p className="text-white/80 text-sm">{unreadCount} non lues</p>
+                            </div>
+                            <div className="max-h-96 overflow-y-auto">
+                              {notifications.map((notif) => (
+                                <div
+                                  key={notif.id}
+                                  className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-100 last:border-0 ${
+                                    notif.unread ? 'bg-purple-50/50' : ''
+                                  }`}
+                                >
+                                  <div className="flex gap-3">
+                                    <div className={`w-2 h-2 mt-2 rounded-full flex-shrink-0 ${
+                                      notif.unread ? 'bg-purple-600' : 'bg-transparent'
+                                    }`}></div>
+                                    <div className="flex-1">
+                                      <p className="text-sm text-gray-900 font-medium">{notif.message}</p>
+                                      <p className="text-xs text-gray-500 mt-1">{notif.time}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="p-3 bg-gray-50 text-center">
+                              <button className="text-sm text-purple-600 font-semibold hover:text-purple-700">
+                                Tout marquer comme lu
+                              </button>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
                   </>
                 )}
 
                 {/* Navigation pour SALON_OWNER */}
                 {user.role === 'SALON_OWNER' && (
                   <>
-                    <Link to="/salon/dashboard" className={`transition ${isActive('/salon/dashboard')}`}>
-                      📊 Dashboard
+                    <Link to="/salon/dashboard" className={navLinkClass('/salon/dashboard')}>
+                      <ChartBarIcon className="h-5 w-5" />
+                      <span>Dashboard</span>
                     </Link>
-                    <Link to="/salon/reservations" className={`transition ${isActive('/salon/reservations')}`}>
-                      📅 Réservations
+                    <Link to="/salon/reservations" className={navLinkClass('/salon/reservations')}>
+                      <CalendarIcon className="h-5 w-5" />
+                      <span>Réservations</span>
                     </Link>
-                    <Link to="/salon/services" className={`transition ${isActive('/salon/services')}`}>
-                      ✂️ Services
+                    <Link to="/salon/services" className={navLinkClass('/salon/services')}>
+                      <ScissorsIcon className="h-5 w-5" />
+                      <span>Services</span>
                     </Link>
-                    <Link to="/salon/coiffeurs" className={`transition ${isActive('/salon/coiffeurs')}`}>
-                      👥 Coiffeurs
-                    </Link>
-                    <Link to="/salon/caissiers" className={`transition ${isActive('/salon/caissiers')}`}>
-                      💰 Caissiers
+                    <Link to="/salon/coiffeurs" className={navLinkClass('/salon/coiffeurs')}>
+                      <UserGroupIcon className="h-5 w-5" />
+                      <span>Coiffeurs</span>
                     </Link>
                   </>
                 )}
-              {user.role === 'ADMIN' || user.role === 'SUPER_ADMIN' ? (
+
+                {/* Navigation pour ADMIN */}
+                {(user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && (
                   <>
-                    <Link to="/admin" className={`transition ${isActive('/admin')}`}>
-                      🛡️ Admin
+                    <Link to="/admin" className={navLinkClass('/admin')}>
+                      <ShieldCheckIcon className="h-5 w-5" />
+                      <span>Admin</span>
                     </Link>
-                    <Link to="/admin/salons" className={`transition ${isActive('/admin/salons')}`}>
-                      🏢 Salons
+                    <Link to="/admin/salons" className={navLinkClass('/admin/salons')}>
+                      <BuildingStorefrontIcon className="h-5 w-5" />
+                      <span>Salons</span>
                     </Link>
-                    <Link to="/admin/reservations" className={`transition ${isActive('/admin/reservations')}`}>
-                      📋 Réservations
+                    <Link to="/admin/reservations" className={navLinkClass('/admin/reservations')}>
+                      <ClipboardDocumentListIcon className="h-5 w-5" />
+                      <span>Réservations</span>
                     </Link>
-                     <Link to="/admin/clients" className={`transition ${isActive('/admin/clients')}`}>
-                        👤 Clients
-                      </Link>
+                    <Link to="/admin/clients" className={navLinkClass('/admin/clients')}>
+                      <UserIcon className="h-5 w-5" />
+                      <span>Clients</span>
+                    </Link>
                   </>
-                ) : null}
+                )}
+
                 {/* Menu utilisateur avec dropdown */}
-                <div className="relative" ref={dropdownRef}>
-                  <button
+                <div className="relative ml-2" ref={dropdownRef}>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                    className="flex items-center space-x-2 px-4 py-2 rounded-lg hover:bg-gray-100 transition"
+                    className="flex items-center gap-3 px-4 py-2 rounded-xl hover:bg-gray-50 transition-all"
                   >
-                    <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
-                      {user.fullName.charAt(0).toUpperCase()}
+                    <div className="relative">
+                      <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-pink-600 rounded-xl flex items-center justify-center text-white font-bold shadow-md">
+                        {user.fullName.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white"></div>
                     </div>
-                    <span className="text-gray-700 font-medium">{user.fullName}</span>
-                    <svg
-                      className={`w-4 h-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
+                    <div className="text-left hidden xl:block">
+                      <p className="text-sm font-semibold text-gray-900">{user.fullName}</p>
+                      <p className="text-xs text-gray-500">{user.role === 'CLIENT' ? 'Client' : 'Propriétaire'}</p>
+                    </div>
+                    <motion.svg
+                      animate={{ rotate: isDropdownOpen ? 180 : 0 }}
+                      className="w-4 h-4 text-gray-400"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
+                    </motion.svg>
+                  </motion.button>
 
                   {/* Dropdown Menu */}
-                  {isDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 py-2">
-                      <div className="px-4 py-3 border-b border-gray-200">
-                        <p className="text-sm text-gray-500">Connecté en tant que</p>
-                        <p className="text-sm font-semibold text-gray-900">{user.email}</p>
-                        <span className="inline-block mt-1 px-2 py-1 text-xs bg-purple-100 text-purple-700 rounded">
-                          {user.role === 'CLIENT' ? 'Client' : 'Propriétaire'}
-                        </span>
-                      </div>
-                      
-                      {user.role === 'SALON_OWNER' && (
-                        <>
-                          <Link
-                            to="/salon/settings"
-                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 transition"
-                            onClick={() => setIsDropdownOpen(false)}
-                          >
-                            ⚙️ Paramètres du salon
-                          </Link>
-                          <Link
-                            to="/salon/hours"
-                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 transition"
-                            onClick={() => setIsDropdownOpen(false)}
-                          >
-                            🕐 Horaires
-                          </Link>
-                          <Link
-                            to="/salon/images"
-                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 transition"
-                            onClick={() => setIsDropdownOpen(false)}
-                          >
-                            🖼️ Images
-                          </Link>
-                          <Link
-                            to="/salon/location"
-                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 transition"
-                            onClick={() => setIsDropdownOpen(false)}
-                          >
-                            📍 Localisation
-                          </Link>
-                          <Link
-                            to="/salon/caissiers"
-                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 transition"
-                            onClick={() => setIsDropdownOpen(false)}
-                          >
-                            💰 Gérer les Caissiers
-                          </Link>
-                          <div className="border-t border-gray-200 my-2"></div>
-                        </>
-                      )}
-                      
-                      <button
-                        onClick={handleLogout}
-                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition"
+                  <AnimatePresence>
+                    {isDropdownOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 10 }}
+                        className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden"
                       >
-                        🚪 Déconnexion
-                      </button>
-                    </div>
-                  )}
+                        <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-4">
+                          <p className="text-white/80 text-xs">Connecté en tant que</p>
+                          <p className="text-white font-bold text-lg">{user.fullName}</p>
+                          <p className="text-white/90 text-sm">{user.email}</p>
+                          <span className="inline-block mt-2 px-3 py-1 text-xs bg-white/20 backdrop-blur-sm text-white rounded-full font-semibold">
+                            {user.role === 'CLIENT' ? '👤 Client' : '💼 Propriétaire'}
+                          </span>
+                        </div>
+
+                        <div className="p-2">
+                          {user.role === 'SALON_OWNER' && (
+                            <>
+                              <Link
+                                to="/salon/settings"
+                                className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 rounded-xl transition-colors"
+                                onClick={() => setIsDropdownOpen(false)}
+                              >
+                                <Cog6ToothIcon className="h-5 w-5 text-gray-400" />
+                                <span>Paramètres du salon</span>
+                              </Link>
+                              <Link
+                                to="/salon/hours"
+                                className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 rounded-xl transition-colors"
+                                onClick={() => setIsDropdownOpen(false)}
+                              >
+                                <ClockIcon className="h-5 w-5 text-gray-400" />
+                                <span>Horaires</span>
+                              </Link>
+                              <Link
+                                to="/salon/images"
+                                className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 rounded-xl transition-colors"
+                                onClick={() => setIsDropdownOpen(false)}
+                              >
+                                <PhotoIcon className="h-5 w-5 text-gray-400" />
+                                <span>Galerie photos</span>
+                              </Link>
+                              <Link
+                                to="/salon/location"
+                                className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 rounded-xl transition-colors"
+                                onClick={() => setIsDropdownOpen(false)}
+                              >
+                                <MapPinIcon className="h-5 w-5 text-gray-400" />
+                                <span>Localisation</span>
+                              </Link>
+                              <Link
+                                to="/salon/caissiers"
+                                className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 rounded-xl transition-colors"
+                                onClick={() => setIsDropdownOpen(false)}
+                              >
+                                <CurrencyDollarIcon className="h-5 w-5 text-gray-400" />
+                                <span>Gérer les caissiers</span>
+                              </Link>
+                              <div className="border-t border-gray-200 my-2"></div>
+                            </>
+                          )}
+
+                          <button
+                            onClick={handleLogout}
+                            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                          >
+                            <ArrowRightOnRectangleIcon className="h-5 w-5" />
+                            <span className="font-semibold">Déconnexion</span>
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
               </>
             ) : (
               <>
-                <Link to="/login" className="text-gray-700 hover:text-purple-600 font-medium transition">
+                <Link
+                  to="/login"
+                  className="px-6 py-2.5 text-gray-700 hover:text-purple-600 font-medium transition-colors"
+                >
                   Se connecter
                 </Link>
                 <Link
                   to="/register-client"
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium"
+                  className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:shadow-lg hover:shadow-purple-500/30 transition-all font-semibold"
                 >
                   S'inscrire
                 </Link>
@@ -193,161 +433,177 @@ export const Navbar = () => {
           </div>
 
           {/* Mobile menu button */}
-          <button
+          <motion.button
+            whileTap={{ scale: 0.9 }}
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden p-2 rounded-lg hover:bg-gray-100"
+            className="lg:hidden p-2 rounded-xl hover:bg-gray-100 transition-colors"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              {isMobileMenuOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              )}
-            </svg>
-          </button>
+            {isMobileMenuOpen ? (
+              <XMarkIcon className="w-6 h-6 text-gray-700" />
+            ) : (
+              <Bars3Icon className="w-6 h-6 text-gray-700" />
+            )}
+          </motion.button>
         </div>
 
         {/* Mobile Menu */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-gray-200">
-            {user ? (
-              <>
-                <div className="px-4 py-3 bg-gray-50 rounded-lg mb-3">
-                  <p className="text-sm font-semibold text-gray-900">{user.fullName}</p>
-                  <p className="text-xs text-gray-500">{user.email}</p>
-                </div>
+        <AnimatePresence>
+          {isMobileMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="lg:hidden overflow-hidden"
+            >
+              <div className="py-4 space-y-2">
+                {user ? (
+                  <>
+                    <div className="px-4 py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-2xl mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center text-white font-bold">
+                          {user.fullName.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-white font-bold">{user.fullName}</p>
+                          <p className="text-white/80 text-sm">{user.email}</p>
+                        </div>
+                      </div>
+                    </div>
 
-                {user.role === 'CLIENT' && (
+                    {user.role === 'CLIENT' && (
+                      <>
+                        <Link
+                          to="/salons"
+                          className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-purple-50 rounded-xl transition-colors"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          <MagnifyingGlassIcon className="h-5 w-5" />
+                          <span>Trouver un salon</span>
+                        </Link>
+                        <Link
+                          to="/my-reservations"
+                          className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-purple-50 rounded-xl transition-colors"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          <CalendarIcon className="h-5 w-5" />
+                          <span>Mes réservations</span>
+                        </Link>
+                        <Link
+                          to="/favorites"
+                          className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-purple-50 rounded-xl transition-colors"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          <HeartIcon className="h-5 w-5" />
+                          <span>Mes favoris</span>
+                          {favorites.length > 0 && (
+                            <span className="ml-auto px-2 py-1 bg-red-100 text-red-600 text-xs font-semibold rounded-full">
+                              {favorites.length}
+                            </span>
+                          )}
+                        </Link>
+                      </>
+                    )}
+
+                    {user.role === 'SALON_OWNER' && (
+                      <>
+                        <Link
+                          to="/salon/dashboard"
+                          className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-purple-50 rounded-xl transition-colors"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          <ChartBarIcon className="h-5 w-5" />
+                          <span>Dashboard</span>
+                        </Link>
+                        <Link
+                          to="/salon/reservations"
+                          className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-purple-50 rounded-xl transition-colors"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          <CalendarIcon className="h-5 w-5" />
+                          <span>Réservations</span>
+                        </Link>
+                        <Link
+                          to="/salon/services"
+                          className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-purple-50 rounded-xl transition-colors"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          <ScissorsIcon className="h-5 w-5" />
+                          <span>Services</span>
+                        </Link>
+                        <Link
+                          to="/salon/coiffeurs"
+                          className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-purple-50 rounded-xl transition-colors"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          <UserGroupIcon className="h-5 w-5" />
+                          <span>Coiffeurs</span>
+                        </Link>
+                        <Link
+                          to="/salon/settings"
+                          className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-purple-50 rounded-xl transition-colors"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          <Cog6ToothIcon className="h-5 w-5" />
+                          <span>Paramètres</span>
+                        </Link>
+                      </>
+                    )}
+
+                    {(user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && (
+                      <>
+                        <Link
+                          to="/admin"
+                          className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-purple-50 rounded-xl transition-colors"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          <ShieldCheckIcon className="h-5 w-5" />
+                          <span>Admin</span>
+                        </Link>
+                        <Link
+                          to="/admin/salons"
+                          className="flex items-center gap-3 px-4 py-3 text-gray-700 hover:bg-purple-50 rounded-xl transition-colors"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                          <BuildingStorefrontIcon className="h-5 w-5" />
+                          <span>Salons</span>
+                        </Link>
+                      </>
+                    )}
+
+                    <div className="border-t border-gray-200 my-2"></div>
+                    <button
+                      onClick={() => {
+                        handleLogout();
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                    >
+                      <ArrowRightOnRectangleIcon className="h-5 w-5" />
+                      <span className="font-semibold">Déconnexion</span>
+                    </button>
+                  </>
+                ) : (
                   <>
                     <Link
-                      to="/salons"
-                      className="block px-4 py-3 text-gray-700 hover:bg-purple-50 rounded-lg"
+                      to="/login"
+                      className="block px-4 py-3 text-gray-700 hover:bg-purple-50 rounded-xl transition-colors"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      🔍 Trouver un salon
+                      Se connecter
                     </Link>
                     <Link
-                      to="/my-reservations"
-                      className="block px-4 py-3 text-gray-700 hover:bg-purple-50 rounded-lg"
+                      to="/register-client"
+                      className="block px-4 py-3 text-purple-600 font-semibold hover:bg-purple-50 rounded-xl transition-colors"
                       onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      📅 Mes réservations
+                      S'inscrire
                     </Link>
                   </>
                 )}
-
-                {user.role === 'SALON_OWNER' && (
-                  <>
-                    <Link
-                      to="/salon/dashboard"
-                      className="block px-4 py-3 text-gray-700 hover:bg-purple-50 rounded-lg"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      📊 Dashboard
-                    </Link>
-                    <Link
-                      to="/salon/reservations"
-                      className="block px-4 py-3 text-gray-700 hover:bg-purple-50 rounded-lg"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      📅 Réservations
-                    </Link>
-                    <Link
-                      to="/salon/services"
-                      className="block px-4 py-3 text-gray-700 hover:bg-purple-50 rounded-lg"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      ✂️ Services
-                    </Link>
-                    <Link
-                      to="/salon/coiffeurs"
-                      className="block px-4 py-3 text-gray-700 hover:bg-purple-50 rounded-lg"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      👥 Coiffeurs
-                    </Link>
-                    <Link
-                      to="/salon/caissiers"
-                      className="block px-4 py-3 text-gray-700 hover:bg-purple-50 rounded-lg"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      💰 Caissiers
-                    </Link>
-                    <Link
-                      to="/salon/settings"
-                      className="block px-4 py-3 text-gray-700 hover:bg-purple-50 rounded-lg"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      ⚙️ Paramètres
-                    </Link>
-                  </>
-                )}
-
-                {(user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && (
-                  <>
-                    <Link
-                      to="/admin"
-                      className="block px-4 py-3 text-gray-700 hover:bg-purple-50 rounded-lg"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      🛡️ Admin
-                    </Link>
-                    <Link
-                      to="/admin/salons"
-                      className="block px-4 py-3 text-gray-700 hover:bg-purple-50 rounded-lg"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      🏢 Salons
-                    </Link>
-                    <Link
-                      to="/admin/reservations"
-                      className="block px-4 py-3 text-gray-700 hover:bg-purple-50 rounded-lg"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      📋 Réservations
-                    </Link>
-                    {user.role === 'SUPER_ADMIN' && (
-                    <Link
-                      to="/admin/clients"
-                      className="block px-4 py-3 text-gray-700 hover:bg-purple-50 rounded-lg"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      👤 Clients
-                    </Link>
-                  )}
-                  </>
-                )}
-
-                <button
-                  onClick={() => {
-                    handleLogout();
-                    setIsMobileMenuOpen(false);
-                  }}
-                  className="w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg mt-2"
-                >
-                  🚪 Déconnexion
-                </button>
-              </>
-            ) : (
-              <>
-                <Link
-                  to="/login"
-                  className="block px-4 py-3 text-gray-700 hover:bg-purple-50 rounded-lg"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Se connecter
-                </Link>
-                <Link
-                  to="/register-client"
-                  className="block px-4 py-3 text-purple-600 font-semibold hover:bg-purple-50 rounded-lg"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  S'inscrire
-                </Link>
-              </>
-            )}
-          </div>
-        )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </nav>
   );
