@@ -22,7 +22,8 @@ import {
   ExclamationCircleIcon,
   ClockIcon as ClockIconOutline,
   CheckBadgeIcon,
-  SparklesIcon
+  SparklesIcon,
+  TagIcon
 } from '@heroicons/react/24/outline';
 
 export const MyReservations = () => {
@@ -452,6 +453,22 @@ export const MyReservations = () => {
                               </div>
                             )}
 
+                            {/* Type de salon */}
+                            <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
+                              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                                <TagIcon className="h-5 w-5 text-purple-600" />
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-500 font-medium">Type de salon</p>
+                                <p className="font-semibold text-gray-900">
+                                  {rdv.salon.type === 'MEN' ? 'Homme' : 
+                                   rdv.salon.type === 'WOMEN' ? 'Femme' : 
+                                   rdv.salon.type === 'MIXED' ? 'Mixte' : 
+                                   rdv.salon.type || 'Non spécifié'}
+                                </p>
+                              </div>
+                            </div>
+
                             {/* Prix */}
                             <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
                               <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
@@ -645,6 +662,22 @@ export const MyReservations = () => {
                                 </div>
                               </div>
                             )}
+
+                            {/* Type de salon */}
+                            <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
+                              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                                <TagIcon className="h-5 w-5 text-purple-600" />
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-500 font-medium">Type de salon</p>
+                                <p className="font-semibold text-gray-900">
+                                  {rdv.salon.type === 'MEN' ? 'Homme' : 
+                                   rdv.salon.type === 'WOMEN' ? 'Femme' : 
+                                   rdv.salon.type === 'MIXED' ? 'Mixte' : 
+                                   rdv.salon.type || 'Non spécifié'}
+                                </p>
+                              </div>
+                            </div>
 
                             {/* Prix */}
                             <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">

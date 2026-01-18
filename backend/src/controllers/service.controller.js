@@ -22,6 +22,26 @@ class ServiceController {
     }
   }
 
+  async getServicesByCategory(req, res, next) {
+    try {
+      const { salonId } = req.params;
+      const includeInactive = req.query.includeInactive === 'true';
+      const services = await serviceService.getServicesByCategory(salonId, includeInactive);
+      res.status(200).json(services);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getAllCategories(req, res, next) {
+    try {
+      const categories = await serviceService.getAllCategories();
+      res.status(200).json(categories);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async updateService(req, res, next) {
     try {
       const { id } = req.params;
@@ -35,8 +55,8 @@ class ServiceController {
   async deleteService(req, res, next) {
     try {
       const { id } = req.params;
-      const result = await serviceService.deleteService(id, req.user.id);
-      res.status(200).json(result);
+      await serviceService.deleteService(id, req.user.id);
+      res.status(200).json({ message: 'Service deleted successfully' });
     } catch (error) {
       next(error);
     }

@@ -21,6 +21,7 @@ import { StarIcon as StarIconSolid, HeartIcon as HeartIconSolid } from '@heroico
 import { Button } from '../../components/common/Button';
 import { useAuth } from '../../hooks/useAuth';
 import { motion, AnimatePresence } from 'framer-motion';
+import { normalizeCoiffeurData } from './utils/coiffeurUtils';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(' ');
@@ -32,6 +33,7 @@ const SalonProfile = () => {
   const { user } = useAuth();
   const [salon, setSalon] = useState(null);
   const [services, setServices] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [coiffeurs, setCoiffeurs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -54,9 +56,10 @@ const SalonProfile = () => {
         setLoading(true);
         console.log('Début du chargement des données...');
         
-        const [salonRes, servicesRes, reviewsRes, coiffeursRes] = await Promise.all([
+        const [salonRes, servicesRes, categoriesRes, reviewsRes, coiffeursRes] = await Promise.all([
           salonAPI.getSalonById(id),
           serviceAPI.getServicesBySalon(id),
+          serviceAPI.getAllCategories(),
           reviewAPI.getSalonReviews(id),
           coiffeurAPI.getCoiffeursBySalon(id)
         ]);
@@ -77,10 +80,39 @@ const SalonProfile = () => {
         const coiffeursData = coiffeursRes?.data || [];
         console.log('Données des coiffeurs:', coiffeursData);
         
+        // Parser les données si nécessaire
+        let servicesData = servicesRes.data;
+        let categoriesData = categoriesRes.data;
+        
+        // Si les services sont des chaînes (données brutes), essayer de parser
+        if (typeof servicesData === 'string') {
+          try {
+            servicesData = JSON.parse(servicesData);
+          } catch (e) {
+            console.error('Erreur parsing services:', e);
+            servicesData = [];
+          }
+        }
+        
+        // Si les catégories sont des chaînes, essayer de parser
+        if (typeof categoriesData === 'string') {
+          try {
+            categoriesData = JSON.parse(categoriesData);
+          } catch (e) {
+            console.error('Erreur parsing categories:', e);
+            categoriesData = [];
+          }
+        }
+        
         setSalon(salonRes.data);
-        setServices(servicesRes.data || []);
+        setServices(servicesData || []);
+        setCategories(categoriesData || []);
         setReviews(reviewsRes.data || []);
         setCoiffeurs(coiffeursData);
+        
+        console.log('Services parsés:', servicesData);
+        console.log('Categories parsées:', categoriesData);
+        
       } catch (err) {
         setError(err.response?.data?.error || 'Erreur lors du chargement du salon');
         console.error('Error loading salon data:', err);
@@ -101,6 +133,31 @@ const SalonProfile = () => {
     count: reviews.filter(r => r.rating === rating).length,
     percentage: reviews.length > 0 ? (reviews.filter(r => r.rating === rating).length / reviews.length) * 100 : 0
   }));
+
+  // Grouper les services par catégorie
+  const getServicesByCategory = () => {
+    if (!services.length || !categories.length) return {};
+    
+    const grouped = {};
+    
+    services.forEach(service => {
+      const category = categories.find(cat => cat.id === service.categoryId);
+      const categoryName = category ? category.name : 'Non catégorisé';
+      
+      if (!grouped[categoryName]) {
+        grouped[categoryName] = {
+          category: category || { name: 'Non catégorisé', icon: '📦' },
+          services: []
+        };
+      }
+      
+      grouped[categoryName].services.push(service);
+    });
+    
+    return grouped;
+  };
+
+  const servicesByCategory = getServicesByCategory();
 
   if (loading) {
     return (
@@ -357,126 +414,143 @@ const SalonProfile = () => {
                   <p className="text-gray-600">Découvrez notre gamme complète de services professionnels</p>
                 </div>
                 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {services.map((service, index) => (
-                    <motion.div
-                      key={service.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="group bg-white rounded-2xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-purple-200"
-                    >
-                      <div className="flex justify-between items-start gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-start gap-3 mb-3">
-                            <div className="p-3 bg-purple-50 rounded-xl group-hover:bg-purple-100 transition-colors">
-                              <ScissorsIcon className="h-6 w-6 text-purple-600" />
+                {Object.keys(servicesByCategory).length > 0 ? (
+                  <div className="space-y-8">
+                    {Object.entries(servicesByCategory).map(([categoryName, categoryData]) => (
+                      <div key={categoryName} className="border border-gray-200 rounded-lg p-6">
+                        {/* En-tête de catégorie */}
+                        <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
+                          <span className="text-2xl">{categoryData.category.icon}</span>
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-800">
+                              {categoryData.category.name}
+                            </h3>
+                            <p className="text-sm text-gray-500">
+                              {categoryData.services.length} service{categoryData.services.length > 1 ? 's' : ''}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Services de la catégorie */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                          {categoryData.services.map((service, index) => (
+                            <motion.div
+                              key={service.id}
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: index * 0.1 }}
+                              className="group bg-white rounded-2xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-purple-200"
+                            >
+                              <div className="flex justify-between items-start gap-4">
+                                <div className="flex-1">
+                                  <div className="flex items-start gap-3 mb-3">
+                                    <div className="p-3 bg-purple-50 rounded-xl group-hover:bg-purple-100 transition-colors">
+                                      <ScissorsIcon className="h-6 w-6 text-purple-600" />
+                                    </div>
+                                    <div>
+                                      <h3 className="text-xl font-semibold text-gray-900 mb-1">{service.name}</h3>
+                                      <p className="text-gray-600 text-sm line-clamp-2">{service.description}</p>
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-4 mt-4">
+                                    <div className="flex items-baseline gap-1">
+                                      <span className="text-3xl font-bold text-purple-600">{service.price}</span>
+                                      <span className="text-gray-500 font-medium">DH</span>
+                                    </div>
+                                    <div className="h-8 w-px bg-gray-200"></div>
+                                    <div className="flex items-center gap-2 text-gray-600">
+                                      <ClockIcon className="h-5 w-5" />
+                                      <span className="font-medium">{service.duration} min</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                <motion.button
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
+                                  onClick={() => navigate(`/salons/${id}/book?service=${service.id}`)}
+                                  className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md hover:shadow-lg transition-all"
+                                >
+                                  Réserver
+                                </motion.button>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {services.map((service, index) => (
+                      <motion.div
+                        key={service.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="group bg-white rounded-2xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-purple-200"
+                      >
+                        <div className="flex justify-between items-start gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-start gap-3 mb-3">
+                              <div className="p-3 bg-purple-50 rounded-xl group-hover:bg-purple-100 transition-colors">
+                                <ScissorsIcon className="h-6 w-6 text-purple-600" />
+                              </div>
+                              <div>
+                                <h3 className="text-xl font-semibold text-gray-900 mb-1">{service.name}</h3>
+                                <p className="text-gray-600 text-sm line-clamp-2">{service.description}</p>
+                              </div>
                             </div>
-                            <div>
-                              <h3 className="text-xl font-semibold text-gray-900 mb-1">{service.name}</h3>
-                              <p className="text-gray-600 text-sm line-clamp-2">{service.description}</p>
+                           
+                            <div className="flex items-center gap-4 mt-4">
+                              <div className="flex items-baseline gap-1">
+                                <span className="text-3xl font-bold text-purple-600">{service.price}</span>
+                                <span className="text-gray-500 font-medium">DH</span>
+                              </div>
+                              <div className="h-8 w-px bg-gray-200"></div>
+                              <div className="flex items-center gap-2 text-gray-600">
+                                <ClockIcon className="h-5 w-5" />
+                                <span className="font-medium">{service.duration} min</span>
+                              </div>
                             </div>
                           </div>
                           
-                          <div className="flex items-center gap-4 mt-4">
-                            <div className="flex items-baseline gap-1">
-                              <span className="text-3xl font-bold text-purple-600">{service.price}</span>
-                              <span className="text-gray-500 font-medium">DH</span>
-                            </div>
-                            <div className="h-8 w-px bg-gray-200"></div>
-                            <div className="flex items-center gap-2 text-gray-600">
-                              <ClockIcon className="h-5 w-5" />
-                              <span className="font-medium">{service.duration} min</span>
-                            </div>
-                          </div>
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => navigate(`/salons/${id}/book?service=${service.id}`)}
+                            className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md hover:shadow-lg transition-all"
+                          >
+                            Réserver
+                          </motion.button>
                         </div>
-                        
-                        <motion.button
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => navigate(`/salons/${id}/book?service=${service.id}`)}
-                          className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md hover:shadow-lg transition-all"
-                        >
-                          Réserver
-                        </motion.button>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-                
-                {services.length === 0 && (
-                  <div className="text-center py-16 bg-white rounded-2xl">
-                    <ScissorsIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Aucun service disponible</h3>
-                    <p className="text-gray-500">Les services seront bientôt ajoutés.</p>
+                      </motion.div>
+                    ))}
                   </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'team' && (
-              <div>
-                <div className="mb-8">
-                  <h2 className="text-3xl font-bold text-gray-900 mb-2">Notre Équipe de Professionnels</h2>
-                  <p className="text-gray-600">Rencontrez nos experts passionnés et talentueux</p>
-                </div>
-                
-                {coiffeurs.length > 0 ? (
+                )  (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {coiffeurs.map((coiffeur, index) => {
-                      // Vérifier la structure des données
-                      console.log('Coiffeur:', coiffeur);
-                      
-                      // Extraire les données en fonction de la structure réelle
-                      // Récupération des informations du coiffeur avec des valeurs par défaut
-                      const nom = coiffeur.fullName || coiffeur.nom || coiffeur.name || coiffeur.username || 'Coiffeur';
-                      const specialite = coiffeur.specialty || coiffeur.specialite || coiffeur.role || 'Coiffeur Professionnel';
-                      const bio = coiffeur.bio || coiffeur.description || 'Aucune biographie disponible.';
-                      
-                      // Afficher les données dans la console pour débogage
-                      console.log('Détails du coiffeur:', { 
-                        id: coiffeur.id, 
-                        nom, 
-                        specialite, 
-                        bio,
-                        rawData: coiffeur // Toutes les données brutes du coiffeur
-                      });
-                      const imageProfil = coiffeur.imageProfil || coiffeur.photo || null;
-                      const isAvailable = coiffeur.isAvailable !== undefined ? coiffeur.isAvailable : true;
-                      const rating = coiffeur.rating || 0;
-                      
-                      // Gérer les compétences
-                      let skills = [];
-                      if (coiffeur.skills) {
-                        skills = Array.isArray(coiffeur.skills) 
-                          ? coiffeur.skills 
-                          : coiffeur.skills.split(',').map(s => s.trim());
-                      } else if (coiffeur.competences) {
-                        skills = Array.isArray(coiffeur.competences)
-                          ? coiffeur.competences
-                          : coiffeur.competences.split(',').map(s => s.trim());
-                      } else {
-                        skills = ['Coupe', 'Coloration', 'Soins'];
-                      }
+                      const coiffeurData = normalizeCoiffeurData(coiffeur, index);
 
                       return (
                         <motion.div
-                          key={coiffeur.id || index}
+                          key={coiffeurData.id}
                           initial={{ opacity: 0, scale: 0.9 }}
                           animate={{ opacity: 1, scale: 1 }}
                           transition={{ delay: index * 0.1 }}
                           className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100"
                         >
                           <div className="relative h-64 overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100">
-                            {imageProfil ? (
+                            {coiffeurData.imageProfil ? (
                               <img 
-                                src={imageProfil} 
-                                alt={nom}
+                                src={coiffeurData.imageProfil} 
+                                alt={coiffeurData.nom}
                                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                                 loading="lazy"
                                 onError={(e) => {
                                   e.target.onerror = null;
-                                  e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(nom)}&background=random&size=400`;
+                                  e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(coiffeurData.nom)}&background=random&size=400`;
                                 }}
                               />
                             ) : (
@@ -485,7 +559,7 @@ const SalonProfile = () => {
                               </div>
                             )}
                             
-                            {isAvailable && (
+                            {coiffeurData.isAvailable && (
                               <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-sm text-green-700 text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg">
                                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                                 Disponible
@@ -495,28 +569,28 @@ const SalonProfile = () => {
                             <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-lg">
                               <StarIconSolid className="h-4 w-4 text-yellow-400" />
                               <span className="text-sm font-semibold text-gray-900">
-                                {rating ? rating.toFixed(1) : 'N/A'}
+                                {coiffeurData.rating ? coiffeurData.rating.toFixed(1) : 'N/A'}
                               </span>
                             </div>
                           </div>
                           
                           <div className="p-6">
-                            <h3 className="text-xl font-bold text-gray-900 mb-1">{nom}</h3>
-                            <p className="text-purple-600 font-medium mb-3">{specialite}</p>
+                            <h3 className="text-xl font-bold text-gray-900 mb-1">{coiffeurData.nom}</h3>
+                            <p className="text-purple-600 font-medium mb-3">{coiffeurData.specialite}</p>
                             
-                            <p className="text-sm text-gray-600 line-clamp-2 mb-4">{bio}</p>
+                            <p className="text-sm text-gray-600 line-clamp-2 mb-4">{coiffeurData.bio}</p>
                             
                             <div className="mb-4">
                               <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2 tracking-wide">Spécialités</h4>
                               <div className="flex flex-wrap gap-2">
-                                {skills.slice(0, 3).map((skill, idx) => (
+                                {coiffeurData.skills.slice(0, 3).map((skill, idx) => (
                                   <span key={idx} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-100">
                                     {skill}
                                   </span>
                                 ))}
-                                {skills.length > 3 && (
+                                {coiffeurData.skills.length > 3 && (
                                   <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                                    +{skills.length - 3}
+                                    +{coiffeurData.skills.length - 3}
                                   </span>
                                 )}
                               </div>
@@ -525,7 +599,7 @@ const SalonProfile = () => {
                             <motion.button
                               whileHover={{ scale: 1.02 }}
                               whileTap={{ scale: 0.98 }}
-                              onClick={() => navigate(`/salons/${id}/book?coiffeurId=${coiffeur.id}`)}
+                              onClick={() => navigate(`/salons/${id}/book?coiffeurId=${coiffeurData.id}`)}
                               className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 rounded-xl font-semibold shadow-md hover:shadow-lg transition-all"
                             >
                               Prendre rendez-vous
@@ -535,7 +609,7 @@ const SalonProfile = () => {
                       );
                     })}
                   </div>
-                ) : (
+                )  (
                   <div className="text-center py-16 bg-white rounded-2xl">
                     <UserGroupIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">Aucun coiffeur disponible</h3>
@@ -588,7 +662,6 @@ const SalonProfile = () => {
                 </div>
               </div>
             )}
-
             {activeTab === 'reviews' && (
               <div>
                 <div className="bg-white rounded-2xl p-8 lg:p-12 shadow-sm mb-8">
@@ -652,35 +725,31 @@ const SalonProfile = () => {
             </div>
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between mb-2">
-              <div>
-                <div className="font-medium text-gray-900">
-                  {review.client?.fullName || 'Client Anonyme'}
-                </div>
-                <div className="flex items-center gap-3 mt-1">
-                  <div className="flex">
-                    {[0, 1, 2, 3, 4].map((rating) => (
-                      <StarIconSolid
-                        key={rating}
-                        className={classNames(
-                          review.rating > rating ? 'text-yellow-400' : 'text-gray-300',
-                          'h-4 w-4'
-                        )}
-                      />
-                    ))}
-                  </div>
-                  <span className="text-sm text-gray-500">
-                    {new Date(review.createdAt).toLocaleDateString('fr-FR', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}
-                  </span>
-                </div>
-              </div>
+            <div className="font-medium text-gray-900">
+              {review.client?.fullName || 'Client Anonyme'}
             </div>
-            <p className="text-gray-700 leading-relaxed mt-3">{review.comment}</p>
+            <div className="flex items-center gap-3 mt-1">
+              {[0, 1, 2, 3, 4].map((rating) => (
+                <StarIconSolid
+                  key={rating}
+                  className={classNames(
+                    review.rating > rating ? 'text-yellow-400' : 'text-gray-300',
+                    'h-4 w-4'
+                  )}
+                />
+              ))}
+            </div>
+            <span className="text-sm text-gray-500">
+              {new Date(review.createdAt).toLocaleDateString('fr-FR', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </span>
           </div>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-gray-700 leading-relaxed mt-3">{review.comment}</p>
         </div>
       </motion.div>
     ))}
@@ -711,6 +780,7 @@ const SalonProfile = () => {
                         animate={{ opacity: 1, scale: 1 }}
                         transition={{ delay: index * 0.05 }}
                         whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                         className="aspect-square rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all cursor-pointer group"
                         onClick={() => setSelectedImage(image)}
                       >
@@ -718,6 +788,7 @@ const SalonProfile = () => {
                           src={image}
                           alt={`${salon.name} - Photo ${index + 1}`}
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                          loading="lazy"
                         />
                       </motion.div>
                     ))}
@@ -736,41 +807,41 @@ const SalonProfile = () => {
       </div>
 
       {/* Modal pour l'image agrandie */}
-<AnimatePresence>
-  {selectedImage && (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
-      onClick={() => setSelectedImage(null)}
-    >
-      <motion.div
-        initial={{ scale: 0.9 }}
-        animate={{ scale: 1 }}
-        exit={{ scale: 0.9 }}
-        className="max-w-5xl max-h-[90vh] relative"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <img
-          src={selectedImage}
-          alt="Image agrandie"
-          className="w-full h-full object-contain rounded-2xl"
-        />
-        <button
-          onClick={() => setSelectedImage(null)}
-          className="absolute top-4 right-4 bg-white/10 backdrop-blur-sm text-white p-3 rounded-full hover:bg-white/20 transition-colors"
-        >
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </motion.div>
-    </motion.div>
-  )}
-</AnimatePresence>
+      <AnimatePresence>
+        {selectedImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+            onClick={() => setSelectedImage(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0 }}
+              className="max-w-5xl max-h-[90vh] relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <img
+                src={selectedImage}
+                alt="Image agrandie"
+                className="w-full h-full object-contain rounded-2xl"
+              />
+              <button
+                onClick={() => setSelectedImage(null)}
+                className="absolute top-4 right-4 bg-white/10 backdrop-blur-sm text-white p-3 rounded-full hover:bg-white/20 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
 
-export default SalonProfile
+export default SalonProfile;

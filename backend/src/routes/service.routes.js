@@ -19,6 +19,7 @@ const createServiceValidation = [
   body('duration').isInt({ min: 1 }).withMessage('Duration must be at least 1 minute'),
   body('price').isFloat({ min: 0 }).withMessage('Price must be a positive number'),
   body('description').optional().trim(),
+  body('categoryId').notEmpty().withMessage('Category ID is required'),
   validate
 ];
 
@@ -27,12 +28,15 @@ const updateServiceValidation = [
   body('duration').optional().isInt({ min: 1 }),
   body('price').optional().isFloat({ min: 0 }),
   body('description').optional().trim(),
+  body('categoryId').optional().isUUID().withMessage('Invalid category ID'),
   body('isActive').optional().isBoolean(),
   validate
 ];
 
-// Public route
+// Public routes
 router.get('/:salonId', serviceController.getServices);
+router.get('/:salonId/by-category', serviceController.getServicesByCategory);
+router.get('/categories/all', serviceController.getAllCategories);
 
 // Protected routes
 router.post('/:salonId', 

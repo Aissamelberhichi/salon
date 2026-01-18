@@ -11,7 +11,8 @@ export const RegisterSalon = () => {
     fullName: '',
     email: '',
     phone: '',
-    password: ''
+    password: '',
+    salonType: 'MIXED' // Type par défaut
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -76,6 +77,22 @@ export const RegisterSalon = () => {
             required
             minLength={6}
           />
+
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">
+              Type de salon
+            </label>
+            <select
+              value={formData.salonType}
+              onChange={(e) => setFormData({ ...formData, salonType: e.target.value })}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              required
+            >
+              <option value="MEN">👨 Homme</option>
+              <option value="WOMEN">👩 Femme</option>
+              <option value="MIXED">👫 Mixte</option>
+            </select>
+          </div>
 
           <Button type="submit" loading={loading} className="w-full">
             Créer mon salon

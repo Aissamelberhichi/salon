@@ -80,7 +80,15 @@ export const SalonList = () => {
 
                 {/* Content */}
                 <div className="p-6">
-                  <h3 className="text-xl font-bold mb-2">{salon.name}</h3>
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="text-xl font-bold">{salon.name}</h3>
+                    <div className="px-2 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded-full">
+                      {salon.type === 'MEN' ? '👨 Homme' : 
+                       salon.type === 'WOMEN' ? '👩 Femme' : 
+                       salon.type === 'MIXED' ? '👫 Mixte' : 
+                       '🏪 Non spécifié'}
+                    </div>
+                  </div>
                   
                   {salon.description && (
                     <p className="text-sm text-gray-600 mb-3 line-clamp-2">

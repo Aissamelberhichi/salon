@@ -33,7 +33,7 @@ class AuthService {
   }
 
   async registerSalonOwner(data) {
-    const { fullName, email, phone, password } = data;
+    const { fullName, email, phone, password, salonType } = data;
 
     const passwordHash = await hashService.hash(password);
 
@@ -61,7 +61,8 @@ class AuthService {
       const salon = await tx.salon.create({
         data: {
           ownerId: user.id,
-          name: `${fullName}'s Salon`
+          name: `${fullName}'s Salon`,
+          type: salonType || 'MIXED' // Utiliser le type fourni ou MIXED par défaut
         }
       });
 
