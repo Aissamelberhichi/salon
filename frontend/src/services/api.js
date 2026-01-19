@@ -157,4 +157,12 @@ export const rdvAPI = {
     api.post(`/rdv/coiffeur/${coiffeurId}/disponibilite`, { disponibilites })
 };
 
+// Ajouter après rdvAPI
+export const favoriteAPI = {
+  getFavorites: () => api.get('/favorites'),
+  addToFavorites: (salonId) => api.post('/favorites', { salonId }),
+  removeFromFavorites: (salonId) => api.delete(`/favorites/${salonId}`),
+  isFavorite: (salonId) => api.get(`/favorites/check/${salonId}`)
+};
+
 export default api;

@@ -20,6 +20,7 @@ import { SalonDetail } from './pages/client/SalonDetail';
 import { MyReservations } from './pages/client/MyReservations';
 import { FindSalons } from './pages/client/FindSalons';
 import SalonProfile from './pages/client/SalonProfile';
+import { Favorites } from './pages/client/Favorites';
 import { SalonReservations } from './pages/salon/SalonReservations';
 import { Navbar } from './components/layout/Navbar';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
@@ -129,6 +130,7 @@ function AppRoutes() {
       <Route path="/salons/list" element={<SalonList />} />
       <Route path="/salons/:id" element={<SalonProfile />} />
       <Route path="/salons/:id/book" element={<SalonDetail />} />
+      <Route path="/favorites" element={<RoleRoute roles={['CLIENT']}><Favorites /></RoleRoute>} />
       <Route path="/my-reservations" element={<RoleRoute roles={['CLIENT']}><MyReservations /></RoleRoute>} />
 
       {/* Routes Caissier */}
@@ -137,15 +139,9 @@ function AppRoutes() {
 
       <Route path="/admin" element={<RoleRoute roles={['ADMIN','SUPER_ADMIN']}><AdminDashboard /></RoleRoute>} />
 
-<Route path="/admin/salons" element={<RoleRoute roles={['ADMIN','SUPER_ADMIN']}><AdminSalons /></RoleRoute>} />
-<Route path="/admin/reservations" element={<RoleRoute roles={['ADMIN','SUPER_ADMIN']}><AdminReservations /></RoleRoute>} />
-<Route
-  path="/admin/clients"
-  element={<RoleRoute roles={['ADMIN','SUPER_ADMIN']}><AdminClients /></RoleRoute>}
-/>
-{/* <Route path="/admin/salons" element={<RoleRoute roles={['ADMIN','SUPER_ADMIN']}><AdminSalons /></RoleRoute>} />
-<Route path="/admin/reservations" element={<RoleRoute roles={['ADMIN','SUPER_ADMIN']}><AdminReservations /></RoleRoute>} />
- */}
+      <Route path="/admin/salons" element={<RoleRoute roles={['ADMIN','SUPER_ADMIN']}><AdminSalons /></RoleRoute>} />
+      <Route path="/admin/reservations" element={<RoleRoute roles={['ADMIN','SUPER_ADMIN']}><AdminReservations /></RoleRoute>} />
+      <Route path="/admin/clients" element={<RoleRoute roles={['ADMIN','SUPER_ADMIN']}><AdminClients /></RoleRoute>} />
     </Routes>
   );
 }

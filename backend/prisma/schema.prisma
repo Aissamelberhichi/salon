@@ -43,6 +43,7 @@ model User {
   rendezVous      RendezVous[]   @relation("ClientRendezVous")  
   reviewsGiven  Review[]  @relation("ClientReviews")
   clientScore   ClientScore? @relation("ClientScore")
+  favorites     Favorite[] @relation("ClientFavorites")
   
   @@map("users")
 }
@@ -75,6 +76,7 @@ model Salon {
   coiffeurs   Coiffeur[]    // AJOUTER
   rendezVous  RendezVous[]    // AJOUTER
   reviews     Review[]      @relation("SalonReviews")
+  favorites   Favorite[]    @relation("SalonFavorites")
 
   @@map("salons")
 }
@@ -256,6 +258,7 @@ model DisponibiliteCoiffeur {
   @@unique([coiffeurId, dayOfWeek])
   @@map("disponibilites_coiffeur")
 }
+
 model Review {
   id        String   @id @default(uuid())
   clientId  String   @map("client_id")
@@ -270,6 +273,19 @@ model Review {
 
   @@unique([clientId, salonId]) // one review per client per salon
   @@map("reviews")
+}
+
+model Favorite {
+  id        String   @id @default(uuid())
+  clientId  String   @map("client_id")
+  salonId   String   @map("salon_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  client User  @relation("ClientFavorites", fields: [clientId], references: [id], onDelete: Cascade)
+  salon  Salon @relation("SalonFavorites", fields: [salonId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, salonId]) // one favorite per client per salon
+  @@map("favorites")
 }
 
 // Client Scoring System

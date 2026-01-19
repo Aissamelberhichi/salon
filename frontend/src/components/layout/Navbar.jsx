@@ -123,77 +123,10 @@ export const Navbar = () => {
                       <CalendarIcon className="h-5 w-5" />
                       <span>Mes réservations</span>
                     </Link>
-
-                    {/* Favoris */}
-                    <div className="relative" ref={favoritesRef}>
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => {
-                          setIsFavoritesOpen(!isFavoritesOpen);
-                          setIsNotificationsOpen(false);
-                        }}
-                        className="relative p-3 rounded-xl hover:bg-gray-50 transition-colors"
-                      >
-                        {favorites.length > 0 ? (
-                          <HeartIconSolid className="h-6 w-6 text-red-500" />
-                        ) : (
-                          <HeartIcon className="h-6 w-6 text-gray-600" />
-                        )}
-                        {favorites.length > 0 && (
-                          <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
-                            {favorites.length}
-                          </span>
-                        )}
-                      </motion.button>
-
-                      {/* Dropdown Favoris */}
-                      <AnimatePresence>
-                        {isFavoritesOpen && (
-                          <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 10 }}
-                            className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden"
-                          >
-                            <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-4">
-                              <h3 className="text-white font-bold text-lg">Mes Favoris</h3>
-                              <p className="text-white/80 text-sm">{favorites.length} salons</p>
-                            </div>
-                            <div className="max-h-96 overflow-y-auto">
-                              {favorites.length > 0 ? (
-                                favorites.map((salon) => (
-                                  <div
-                                    key={salon.id}
-                                    className="p-4 hover:bg-gray-50 cursor-pointer transition-colors border-b border-gray-100 last:border-0"
-                                    onClick={() => {
-                                      navigate(`/salons/${salon.id}`);
-                                      setIsFavoritesOpen(false);
-                                    }}
-                                  >
-                                    <div className="flex items-center justify-between">
-                                      <div>
-                                        <h4 className="font-semibold text-gray-900">{salon.name}</h4>
-                                        <p className="text-sm text-gray-500">{salon.city}</p>
-                                      </div>
-                                      <div className="flex items-center gap-1">
-                                        <span className="text-yellow-400">★</span>
-                                        <span className="text-sm font-medium">{salon.rating}</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))
-                              ) : (
-                                <div className="p-8 text-center">
-                                  <HeartIcon className="h-12 w-12 text-gray-300 mx-auto mb-2" />
-                                  <p className="text-gray-500 text-sm">Aucun favori pour le moment</p>
-                                </div>
-                              )}
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
+                    <Link to="/favorites" className={navLinkClass('/favorites')}>
+                      <HeartIcon className="h-5 w-5" />
+                      <span>Mes Favoris</span>
+                    </Link>
 
                     {/* Notifications */}
                     <div className="relative" ref={notificationsRef}>

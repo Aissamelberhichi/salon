@@ -3,7 +3,7 @@ npx prisma studio == http://localhost:5555
 run frend end = npm run dev
 
 git add .
-git commit -m "proxymite"
+git commit -m "frent end"
 git push origin main
 
 admin : admin@salon-saas.com / admin123

@@ -206,25 +206,26 @@ export const Dashboard = () => {
       const now = new Date();
       console.log('Date actuelle:', now);
       
-      // Séparer les réservations à venir et passées avec logique temps réel ET statut
+      // Séparer les réservations selon les nouveaux critères
+      // Prochains Rendez-vous: réservations "PENDING", "CONFIRMED" et celles en retard
       const upcoming = reservationsWithReviews.filter(rdv => {
-        // La date contient déjà le format complet, on parse directement
+        const isPendingOrConfirmed = rdv.status === 'PENDING' || rdv.status === 'CONFIRMED';
+        
+        // Vérifier si la réservation est en retard (date passée mais pas terminée)
         const rdvDateTime = new Date(rdv.date);
-        const isUpcoming = rdvDateTime > now;
-        const isNotCompleted = rdv.status !== 'COMPLETED';
-        console.log(`RDV ${rdv.id}: ${rdv.date} -> ${rdvDateTime} > ${now} = ${isUpcoming}, status: ${rdv.status} != COMPLETED = ${isNotCompleted}`);
-        return isUpcoming && isNotCompleted;
+        const now = new Date();
+        const isOverdue = rdvDateTime < now && rdv.status !== 'COMPLETED' && rdv.status !== 'CANCELLED';
+        
+        const shouldShow = isPendingOrConfirmed || isOverdue;
+        console.log(`RDV ${rdv.id}: status=${rdv.status}, en retard=${isOverdue}, afficher=${shouldShow}`);
+        return shouldShow;
       });
       
+      // Rendez-vous Passés: uniquement les 3 dernières réservations terminées (status = 'COMPLETED')
       const past = reservationsWithReviews.filter(rdv => {
-        // Pour les RDV passés : soit terminés par statut, soit passés par date
-        const rdvDateTime = new Date(rdv.date);
-        const isPast = rdvDateTime <= now;
         const isCompleted = rdv.status === 'COMPLETED';
-        // Un RDV est "passé" s'il est terminé par statut OU si la date est passée
-        const isPastReservation = isCompleted || isPast;
-        console.log(`RDV ${rdv.id}: ${rdv.date} -> ${rdvDateTime} <= ${now} = ${isPast}, status: COMPLETED = ${isCompleted}, final = ${isPastReservation}`);
-        return isPastReservation;
+        console.log(`RDV ${rdv.id}: status=${rdv.status}, terminé=${isCompleted}`);
+        return isCompleted;
       });
 
       console.log('Upcoming reservations:', upcoming);
@@ -236,7 +237,8 @@ export const Dashboard = () => {
 
       // Mettre à jour les états avec détection de changements
       setUpcomingReservations(prev => {
-        const newUpcoming = upcoming.slice(0, 3);
+        // Toutes les réservations PENDING et CONFIRMED (sans limite)
+        const newUpcoming = upcoming;
         // Vérifier s'il y a eu des changements
         if (JSON.stringify(prev) !== JSON.stringify(newUpcoming)) {
           return newUpcoming;
@@ -245,7 +247,8 @@ export const Dashboard = () => {
       });
       
       setPastReservations(prev => {
-        const newPast = past.slice(0, 5);
+        // Uniquement les 3 dernières réservations terminées
+        const newPast = past.slice(0, 3);
         // Vérifier s'il y a eu des changements
         if (JSON.stringify(prev) !== JSON.stringify(newPast)) {
           return newPast;
@@ -275,7 +278,18 @@ export const Dashboard = () => {
     navigate('/login');
   };
 
-  const getStatusConfig = (status) => {
+  const getStatusConfig = (status, isOverdue = false) => {
+    // Si la réservation est en retard, utiliser une configuration spéciale
+    if (isOverdue) {
+      return {
+        icon: ExclamationCircleIcon,
+        color: 'text-red-600',
+        bgColor: 'bg-red-50',
+        borderColor: 'border-red-200',
+        label: 'En retard'
+      };
+    }
+
     const configs = {
       PENDING: {
         icon: ExclamationCircleIcon,
@@ -795,7 +809,12 @@ export const Dashboard = () => {
           <div className="space-y-4">
             {upcomingReservations.length > 0 ? (
               upcomingReservations.map((rdv, index) => {
-                const statusConfig = getStatusConfig(rdv.status);
+                // Vérifier si la réservation est en retard
+                const rdvDateTime = new Date(rdv.date);
+                const now = new Date();
+                const isOverdue = rdvDateTime < now && rdv.status !== 'COMPLETED' && rdv.status !== 'CANCELLED';
+                
+                const statusConfig = getStatusConfig(rdv.status, isOverdue);
                 const StatusIcon = statusConfig.icon;
                 const services = rdv.services && rdv.services.length > 0
                   ? rdv.services.map(rs => rs.service)

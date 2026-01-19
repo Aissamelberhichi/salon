@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { salonAPI, serviceAPI, reviewAPI, coiffeurAPI } from '../../services/api';
+import { salonAPI, serviceAPI, reviewAPI, coiffeurAPI, favoriteAPI } from '../../services/api';
 import { 
   StarIcon, 
   MapPinIcon, 
@@ -29,7 +29,7 @@ function classNames(...classes) {
 
 const SalonProfile = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
+  const navigate = useNavigate();   
   const { user } = useAuth();
   const [salon, setSalon] = useState(null);
   const [services, setServices] = useState([]);
@@ -113,6 +113,9 @@ const SalonProfile = () => {
         console.log('Services parsés:', servicesData);
         console.log('Categories parsées:', categoriesData);
         
+        // Vérifier si le salon est en favori
+        await checkFavoriteStatus(salonRes.data.id);
+        
       } catch (err) {
         setError(err.response?.data?.error || 'Erreur lors du chargement du salon');
         console.error('Error loading salon data:', err);
@@ -123,6 +126,64 @@ const SalonProfile = () => {
 
     fetchData();
   }, [id]);
+
+  // Vérifier si le salon est en favori
+  const checkFavoriteStatus = async (salonId) => {
+    try {
+      console.log('Checking favorite status for salon:', salonId);
+      console.log('User logged in:', !!user);
+      
+      if (!user) {
+        console.log('User not logged in, skipping favorite check');
+        setIsFavorite(false);
+        return;
+      }
+      
+      const response = await favoriteAPI.isFavorite(salonId);
+      console.log('Favorite status response:', response.data);
+      setIsFavorite(response.data?.isFavorite || false);
+    } catch (err) {
+      console.error('Erreur lors de la vérification du statut de favori:', err);
+      console.error('Error response:', err.response?.data);
+      setIsFavorite(false);
+    }
+  };
+
+  // Gérer l'ajout/retrait des favoris
+  const toggleFavorite = async () => {
+    try {
+      console.log('Toggle favorite clicked. Current state:', isFavorite);
+      console.log('Salon ID:', salon?.id);
+      console.log('User:', user);
+      
+      if (!user) {
+        console.error('User not logged in');
+        // Rediriger vers la page de connexion
+        navigate('/login');
+        return;
+      }
+      
+      if (!salon?.id) {
+        console.error('Salon ID not available');
+        return;
+      }
+      
+      if (isFavorite) {
+        console.log('Removing from favorites...');
+        await favoriteAPI.removeFromFavorites(salon.id);
+        setIsFavorite(false);
+        console.log('Successfully removed from favorites');
+      } else {
+        console.log('Adding to favorites...');
+        await favoriteAPI.addToFavorites(salon.id);
+        setIsFavorite(true);
+        console.log('Successfully added to favorites');
+      }
+    } catch (err) {
+      console.error('Erreur lors de la gestion des favoris:', err);
+      console.error('Error response:', err.response?.data);
+    }
+  };
 
   const averageRating = reviews.length > 0
     ? (reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length).toFixed(1)
@@ -219,7 +280,7 @@ const SalonProfile = () => {
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
-              onClick={() => setIsFavorite(!isFavorite)}
+              onClick={() => toggleFavorite()}
               className="bg-white/90 backdrop-blur-sm p-3 rounded-full shadow-lg hover:bg-white transition-colors"
             >
               {isFavorite ? (
@@ -247,8 +308,12 @@ const SalonProfile = () => {
                 <div className="flex-shrink-0">
                   <div className="relative">
                     <div className="h-32 w-32 lg:h-40 lg:w-40 rounded-2xl overflow-hidden shadow-xl ring-4 ring-white bg-white">
-                      {salon.logo ? (
-                        <img src={salon.logo} alt={salon.name} className="h-full w-full object-cover" />
+                      {salon.images && salon.images.length > 0 ? (
+                        <img 
+                          src={salon.images.find(img => img.isPrimary)?.url || salon.images[0].url} 
+                          alt={salon.name} 
+                          className="h-full w-full object-cover" 
+                        />
                       ) : (
                         <div className="h-full w-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
                           <span className="text-purple-600 text-5xl font-bold">
@@ -528,7 +593,18 @@ const SalonProfile = () => {
                       </motion.div>
                     ))}
                   </div>
-                )  (
+                )}
+              </div>
+            )}
+
+            {activeTab === 'team' && (
+              <div>
+                <div className="mb-8">
+                  <h2 className="text-3xl font-bold text-gray-900 mb-2">Notre Équipe</h2>
+                  <p className="text-gray-600">Découvrez nos professionnels passionnés</p>
+                </div>
+                
+                {coiffeurs.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                     {coiffeurs.map((coiffeur, index) => {
                       const coiffeurData = normalizeCoiffeurData(coiffeur, index);
@@ -609,7 +685,7 @@ const SalonProfile = () => {
                       );
                     })}
                   </div>
-                )  (
+                ) : (
                   <div className="text-center py-16 bg-white rounded-2xl">
                     <UserGroupIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">Aucun coiffeur disponible</h3>
