@@ -1,61 +1,42 @@
 const prisma = require('../config/database');
 
 class ServiceService {
-async createService(salonId, ownerId, data) {
-  // Verify ownership
-  const salon = await prisma.salon.findUnique({
-    where: { id: salonId }
-  });
-
-  if (!salon || salon.ownerId !== ownerId) {
-    throw new Error('Unauthorized');
+  async getAllCategories() {
+    const categories = await prisma.serviceCategory.findMany({
+      where: {
+        isActive: true
+      },
+      orderBy: {
+        sortOrder: 'asc'
+      }
+    });
+    return categories;
   }
 
-  const service = await prisma.service.create({
-    data: {
-      salonId,
-      categoryId: data.categoryId,  // Utiliser categoryId directement
-      name: data.name,
-      description: data.description,
-      duration: parseInt(data.duration),
-      price: parseFloat(data.price),
-      isActive: data.isActive !== undefined ? data.isActive : true
+  async createService(salonId, ownerId, data) {
+    // Verify ownership
+    const salon = await prisma.salon.findUnique({
+      where: { id: salonId }
+    });
+
+    if (!salon || salon.ownerId !== ownerId) {
+      throw new Error('Unauthorized');
     }
-  });
 
-  return service;
-}
+    const service = await prisma.service.create({
+      data: {
+        salonId,
+        name: data.name,
+        description: data.description,
+        duration: parseInt(data.duration),
+        price: parseFloat(data.price),
+        categoryId: data.categoryId || null,
+        isActive: data.isActive !== undefined ? data.isActive : true
+      }
+    });
 
-// Ajouter ces méthodes utilitaires
-getCategoryIcon(categoryName) {
-  const icons = {
-    PEDICURE: '💅',
-    MANICURE: '💅',
-    COIFFURE: '✂️',
-    BARBE: '🪒',
-    SOIN_VISAGE: '🧖',
-    EPILATION: '💇',
-    MASSAGE: '💆',
-    BRONZAGE: '☀️',
-    AUTRE: '📦'
-  };
-  return icons[categoryName] || '📦';
-}
-
-getCategorySortOrder(categoryName) {
-  const orders = {
-    PEDICURE: 1,
-    MANICURE: 2,
-    COIFFURE: 3,
-    BARBE: 4,
-    SOIN_VISAGE: 5,
-    EPILATION: 6,
-    MASSAGE: 7,
-    BRONZAGE: 8,
-    AUTRE: 999
-  };
-  return orders[categoryName] || 999;
-}
+    return service;
+  }
 
   async getServicesBySalon(salonId, includeInactive = false) {
     const where = {
@@ -65,78 +46,65 @@ getCategorySortOrder(categoryName) {
 
     const services = await prisma.service.findMany({
       where,
+      include: {
+        category: true
+      },
       orderBy: { name: 'asc' }
     });
 
     return services;
   }
 
-  async getServicesByCategory(salonId, includeInactive = false) {
-    const where = {
-      salonId,
-      ...(includeInactive ? {} : { isActive: true })
-    };
-
-    const services = await prisma.service.findMany({
-      where,
-      include: {
-        category: true  // Inclure les informations de la catégorie
-      },
-      orderBy: [
-        { category: { sortOrder: 'asc' } },
-        { name: 'asc' }
-      ]
-    });
-
-    // Group services by category
-    const groupedServices = services.reduce((acc, service) => {
-      const categoryName = service.category.name;
-      if (!acc[categoryName]) {
-        acc[categoryName] = {
-          category: service.category,
-          services: []
-        };
+  async updateService(serviceId, ownerId, data) {
+    console.log('updateService - serviceId:', serviceId);
+    console.log('updateService - ownerId:', ownerId);
+    console.log('updateService - data:', data);
+    
+    // First get the service with salon
+    const service = await prisma.service.findUnique({
+      where: { id: serviceId },
+      include: { 
+        salon: true 
       }
-      acc[categoryName].services.push(service);
-      return acc;
-    }, {});
-
-    return groupedServices;
-  }
-
-  async getAllCategories() {
-    return await prisma.serviceCategory.findMany({
-      where: { isActive: true },
-      orderBy: { sortOrder: 'asc' }
     });
-  }
 
-async updateService(serviceId, ownerId, data) {
-  // Verify ownership
-  const service = await prisma.service.findUnique({
-    where: { id: serviceId },
-    include: { salon: true }
-  });
+    console.log('updateService - service found:', service);
 
-  if (!service || service.salon.ownerId !== ownerId) {
-    throw new Error('Unauthorized');
-  }
-
-  const updated = await prisma.service.update({
-    where: { id: serviceId },
-    data: {
-      ...(data.name && { name: data.name }),
-      ...(data.description !== undefined && { description: data.description }),
-      ...(data.duration && { duration: parseInt(data.duration) }),
-      ...(data.price !== undefined && { price: parseFloat(data.price) }),
-      ...(data.isActive !== undefined && { isActive: data.isActive }),
-      ...(data.categoryId && { categoryId: data.categoryId }),  // Utiliser categoryId directement
-      updatedAt: new Date()
+    if (!service) {
+      throw new Error('Service not found');
     }
-  });
 
-  return updated;
-}
+    console.log('updateService - service.salon.ownerId:', service.salon.ownerId);
+    console.log('updateService - comparison:', service.salon.ownerId, '===', ownerId);
+    console.log('updateService - types:', typeof service.salon.ownerId, typeof ownerId);
+
+    // Vérification plus robuste avec conversion en string pour comparaison
+    const salonOwnerId = String(service.salon.ownerId);
+    const requestOwnerId = String(ownerId);
+    
+    if (salonOwnerId !== requestOwnerId) {
+      console.log('updateService - Unauthorized: salon owner does not match request user');
+      throw new Error(`Unauthorized - You can only update your own services. Salon owner: ${salonOwnerId}, Request user: ${requestOwnerId}`);
+    }
+
+    console.log('updateService - Authorization successful, updating service...');
+
+    const updated = await prisma.service.update({
+      where: { id: serviceId },
+      data: {
+        ...(data.name && { name: data.name }),
+        ...(data.description !== undefined && { description: data.description }),
+        ...(data.duration && { duration: parseInt(data.duration) }),
+        ...(data.price !== undefined && { price: parseFloat(data.price) }),
+        ...(data.categoryId !== undefined && { categoryId: data.categoryId }),
+        ...(data.isActive !== undefined && { isActive: data.isActive }),
+        updatedAt: new Date()
+      }
+    });
+
+    console.log('updateService - Service updated successfully:', updated);
+    return updated;
+  }
 
   async deleteService(serviceId, ownerId) {
     // Verify ownership

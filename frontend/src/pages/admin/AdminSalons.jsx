@@ -10,6 +10,8 @@ export const AdminSalons = () => {
   const [isActive, setIsActive] = useState('all');
   const [pendingOnly, setPendingOnly] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [actionLoading, setActionLoading] = useState({}); // Pour suivre les actions en cours
+  const [successMessage, setSuccessMessage] = useState('');
 
   const load = async () => {
     setLoading(true);
@@ -37,20 +39,49 @@ export const AdminSalons = () => {
   };
 
   const approve = async (id) => {
+    const salon = items.find(s => s.id === id);
+    if (!salon) return;
+    
+    if (!window.confirm(`Êtes-vous sûr de vouloir approuver le salon "${salon.name}" ?\n\nUn email de notification sera envoyé à ${salon.owner?.email}`)) {
+      return;
+    }
+
+    setActionLoading(prev => ({ ...prev, [id]: true }));
+    setError('');
+    setSuccessMessage('');
+    
     try {
       await adminAPI.approveSalon(id);
+      setSuccessMessage(`✅ Salon "${salon.name}" approuvé avec succès ! Email envoyé à ${salon.owner?.email}`);
       setRefreshKey((k) => k + 1);
     } catch (e) {
-      alert(e.response?.data?.error || 'Erreur lors de l\'approbation');
+      setError(e.response?.data?.error || 'Erreur lors de l\'approbation');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [id]: false }));
     }
   };
 
   const toggle = async (id) => {
+    const salon = items.find(s => s.id === id);
+    if (!salon) return;
+    
+    const action = salon.isActive ? 'désactiver' : 'activer';
+    if (!window.confirm(`Êtes-vous sûr de vouloir ${action} le salon "${salon.name}" ?\n\nUn email de notification sera envoyé à ${salon.owner?.email}`)) {
+      return;
+    }
+
+    setActionLoading(prev => ({ ...prev, [id]: true }));
+    setError('');
+    setSuccessMessage('');
+    
     try {
       await adminAPI.toggleSalonActive(id);
+      setSuccessMessage(`✅ Salon "${salon.name}" ${action} avec succès ! Email envoyé à ${salon.owner?.email}`);
       setRefreshKey((k) => k + 1);
     } catch (e) {
-      alert(e.response?.data?.error || 'Erreur lors du changement d\'état');
+      setError(e.response?.data?.error || 'Erreur lors du changement d\'état');
+    } finally {
+      setActionLoading(prev => ({ ...prev, [id]: false }));
     }
   };
 
@@ -88,6 +119,19 @@ export const AdminSalons = () => {
           <button type="submit" className="bg-purple-600 text-white rounded px-4 py-2">Filtrer</button>
         </form>
 
+        {/* Messages de succès et d'erreur */}
+        {successMessage && (
+          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4">
+            {successMessage}
+          </div>
+        )}
+        
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+            {error}
+          </div>
+        )}
+
         {loading ? (
           <div className="min-h-[200px] flex items-center justify-center">
             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600"></div>
@@ -120,9 +164,41 @@ export const AdminSalons = () => {
                     <td className="p-3">{s.coiffeurs?.length || 0}</td>
                     <td className="p-3 flex gap-2">
                       {!s.isActive && (
-                        <button onClick={() => approve(s.id)} className="px-3 py-1 rounded bg-emerald-600 text-white">Approuver</button>
+                        <button 
+                          onClick={() => approve(s.id)} 
+                          disabled={actionLoading[s.id]}
+                          className="px-3 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                          {actionLoading[s.id] ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                              Traitement...
+                            </>
+                          ) : (
+                            <>
+                              ✅ Approuver
+                            </>
+                          )}
+                        </button>
                       )}
-                      <button onClick={() => toggle(s.id)} className="px-3 py-1 rounded bg-gray-700 text-white">{s.isActive ? 'Désactiver' : 'Activer'}</button>
+                      {s.isActive && (
+                        <button 
+                          onClick={() => toggle(s.id)} 
+                          disabled={actionLoading[s.id]}
+                          className="px-3 py-1 rounded bg-orange-600 text-white hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                          {actionLoading[s.id] ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                              Traitement...
+                            </>
+                          ) : (
+                            <>
+                              ⏸️ Désactiver
+                            </>
+                          )}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

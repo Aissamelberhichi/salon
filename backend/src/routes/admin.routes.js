@@ -1,6 +1,7 @@
 const express = require('express');
 const { authenticate, authorize } = require('../middlewares/auth.middleware');
 const adminController = require('../controllers/admin.controller');
+const adminSettingsRoutes = require('./admin.settings.routes');
 const router = express.Router();
 
 router.use(authenticate);
@@ -19,5 +20,8 @@ router.put('/clients/:id/toggle', authorize('SUPER_ADMIN'), adminController.togg
 
 // Reservations (Admin and Caissier)
 router.get('/reservations', authorize('ADMIN', 'SUPER_ADMIN', 'CAISSIER'), adminController.listReservations);
+
+// Settings (Admin only)
+router.use('/settings', authorize('ADMIN', 'SUPER_ADMIN'), adminSettingsRoutes);
 
 module.exports = router;

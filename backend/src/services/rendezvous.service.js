@@ -62,10 +62,28 @@ class RendezVousService {
           coiffeurId,
           dayOfWeek
         }
+      },
+      include: {
+        pauses: true
       }
     });
 
     if (!availability || !availability.isAvailable) {
+      return [];
+    }
+
+    // Handle edge case: if endTime is "00:00", treat it as end of day (23:59)
+    let endTime = availability.endTime;
+    if (endTime === "00:00") {
+      endTime = "23:59";
+    }
+
+    // Validate that end time is after start time
+    const startMinutes = parseHHMM(availability.startTime);
+    const endMinutes = parseHHMM(endTime);
+    
+    if (endMinutes <= startMinutes) {
+      console.warn(`Invalid availability for ${dayOfWeek}: start ${availability.startTime} >= end ${endTime}`);
       return [];
     }
 
@@ -99,8 +117,17 @@ const buffer = coiffeur.bufferMinutes ?? 5;
       end: parseHHMM(r.endTime) + buffer
     }));
 
+    // Add pause ranges to exclude
+    const pauseRanges = (availability.pauses || []).map(pause => ({
+      start: parseHHMM(pause.startTime),
+      end: parseHHMM(pause.endTime)
+    }));
+
+    // Combine existing rendezvous and pauses
+    const allExcludeRanges = [...existingRanges, ...pauseRanges];
+
     const availStart = parseHHMM(availability.startTime);
-    const availEnd = parseHHMM(availability.endTime);
+    const availEnd = parseHHMM(endTime);
 
     const step = 5;
     const slots = [];
@@ -110,7 +137,7 @@ const buffer = coiffeur.bufferMinutes ?? 5;
       const proposedEnd = t + serviceDuration;
       const proposedEndWithBuffer = proposedEnd + buffer;
 
-      const overlaps = existingRanges.some(r =>
+      const overlaps = allExcludeRanges.some(r =>
         !(proposedStart >= r.end || proposedEndWithBuffer <= r.start)
       );
 

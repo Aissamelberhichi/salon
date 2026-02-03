@@ -1,6 +1,7 @@
 // src/routes/index.js
 const express = require('express');
 const authRoutes = require('./auth.routes');
+const emailRoutes = require('./email.routes');
 const salonRoutes = require('./salon.routes');
 const serviceRoutes = require('./service.routes');
 const coiffeurRoutes = require('./coiffeur.routes');
@@ -10,10 +11,13 @@ const reviewRoutes = require('./review.routes');
 const clientScoreRoutes = require('./clientScore.routes');
 const caissierRoutes = require('./caissier.routes');
 const favoriteRoutes = require('./favorite.routes');
+const pauseRoutes = require('./pause.routes');
+const publicSettingsRoutes = require('./public.settings.routes');
 
 const router = express.Router();
 
 router.use('/auth', authRoutes);
+router.use('/email', emailRoutes);
 router.use('/salons', salonRoutes);
 router.use('/services', serviceRoutes);
 router.use('/coiffeurs', coiffeurRoutes);
@@ -23,5 +27,7 @@ router.use('/reviews', reviewRoutes); // or just add endpoints under /salons/:id
 router.use('/client-score', clientScoreRoutes);
 router.use('/caissiers', caissierRoutes);
 router.use('/favorites', favoriteRoutes);
+router.use('/pauses', pauseRoutes);
+router.use('/public', publicSettingsRoutes);
 
 module.exports = router;

@@ -4,13 +4,23 @@ const prisma = require('../config/database');
 const authenticate = async (req, res, next) => {
   try {
     console.log('Auth middleware called for:', req.path);
-    const authHeader = req.headers.authorization;
     
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Try to get token from cookies first (HttpOnly cookies)
+    let token = req.cookies?.accessToken;
+    
+    // Fallback to Authorization header for backward compatibility
+    if (!token) {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'No token provided' });
+      }
+      token = authHeader.split(' ')[1];
+    }
+    
+    if (!token) {
       return res.status(401).json({ error: 'No token provided' });
     }
 
-    const token = authHeader.split(' ')[1];
     const decoded = jwtService.verify(token);
 
     const user = await prisma.user.findUnique({
@@ -51,47 +61,6 @@ const authenticate = async (req, res, next) => {
   }
 };
 
-const authenticateClient = async (req, res, next) => {
-  try {
-    console.log('Client auth middleware called for:', req.path);
-    const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'No token provided' });
-    }
-
-    const token = authHeader.split(' ')[1];
-    const decoded = jwtService.verify(token);
-
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.id },
-      select: {
-        id: true,
-        fullName: true,
-        email: true,
-        phone: true,
-        role: true,
-        isActive: true
-      }
-    });
-
-    if (!user || !user.isActive) {
-      return res.status(401).json({ error: 'User not found or inactive' });
-    }
-
-    // Vérifier que l'utilisateur est un client
-    if (user.role !== 'CLIENT') {
-      return res.status(403).json({ error: 'Access denied. Client role required.' });
-    }
-
-    console.log('Authenticated client:', { id: user.id, role: user.role });
-    req.user = user;
-    next();
-  } catch (error) {
-    return res.status(401).json({ error: error.message });
-  }
-};
-
 const authorize = (...roles) => {
   return (req, res, next) => {
     if (!req.user) {
@@ -106,4 +75,4 @@ const authorize = (...roles) => {
   };
 };
 
-module.exports = { authenticate, authenticateClient, authorize };
+module.exports = { authenticate, authorize };

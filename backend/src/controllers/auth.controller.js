@@ -4,7 +4,25 @@ class AuthController {
   async registerClient(req, res, next) {
     try {
       const result = await authService.registerClient(req.body);
-      res.status(201).json(result);
+      
+      // Set HttpOnly cookies
+      res.cookie('accessToken', result.accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 15 * 60 * 1000 // 15 minutes
+      });
+      
+      res.cookie('refreshToken', result.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      });
+      
+      // Return user data without tokens
+      const { accessToken, refreshToken, ...responseData } = result;
+      res.status(201).json(responseData);
     } catch (error) {
       next(error);
     }
@@ -13,7 +31,25 @@ class AuthController {
   async registerSalonOwner(req, res, next) {
     try {
       const result = await authService.registerSalonOwner(req.body);
-      res.status(201).json(result);
+      
+      // Set HttpOnly cookies
+      res.cookie('accessToken', result.accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 15 * 60 * 1000 // 15 minutes
+      });
+      
+      res.cookie('refreshToken', result.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      });
+      
+      // Return user data without tokens
+      const { accessToken, refreshToken, ...responseData } = result;
+      res.status(201).json(responseData);
     } catch (error) {
       next(error);
     }
@@ -22,7 +58,25 @@ class AuthController {
   async login(req, res, next) {
     try {
       const result = await authService.login(req.body.email, req.body.password);
-      res.status(200).json(result);
+      
+      // Set HttpOnly cookies
+      res.cookie('accessToken', result.accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 15 * 60 * 1000 // 15 minutes
+      });
+      
+      res.cookie('refreshToken', result.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      });
+      
+      // Return user data without tokens
+      const { accessToken, refreshToken, ...responseData } = result;
+      res.status(200).json(responseData);
     } catch (error) {
       next(error);
     }
@@ -30,9 +84,52 @@ class AuthController {
 
   async refreshToken(req, res, next) {
     try {
-      const { refreshToken } = req.body;
+      const { refreshToken } = req.cookies;
+      if (!refreshToken) {
+        return res.status(401).json({ message: 'Refresh token not provided' });
+      }
+      
       const tokens = await authService.refreshToken(refreshToken);
-      res.status(200).json(tokens);
+      
+      // Set new HttpOnly cookies
+      res.cookie('accessToken', tokens.accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 15 * 60 * 1000 // 15 minutes
+      });
+      
+      res.cookie('refreshToken', tokens.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      });
+      
+      res.status(200).json({ message: 'Tokens refreshed successfully' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async logout(req, res, next) {
+    try {
+      // Clear cookies
+      res.cookie('accessToken', '', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        expires: new Date(0)
+      });
+      
+      res.cookie('refreshToken', '', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        expires: new Date(0)
+      });
+      
+      res.status(200).json({ message: 'Logged out successfully' });
     } catch (error) {
       next(error);
     }

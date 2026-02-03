@@ -18,7 +18,9 @@ import {
   BuildingStorefrontIcon,
   SparklesIcon,
   CheckCircleIcon,
-  ExclamationCircleIcon
+  ExclamationCircleIcon,
+  ChevronDownIcon,
+  ChevronUpIcon
 } from '@heroicons/react/24/outline';
 
 // Hook personnalisé pour charger les données du salon
@@ -208,6 +210,30 @@ const ServiceForm = ({
 const ServiceList = ({ services, categories, onEdit, onDelete, submitting }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [expandedCategories, setExpandedCategories] = useState(new Set()); // Nouvel état
+
+  // Toggle l'affichage d'une catégorie
+  const toggleCategory = (categoryName) => {
+    setExpandedCategories(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(categoryName)) {
+        newSet.delete(categoryName);
+      } else {
+        newSet.add(categoryName);
+      }
+      return newSet;
+    });
+  };
+
+  // Développer/réduire toutes les catégories
+  const toggleAllCategories = () => {
+    const categoryNames = Object.keys(servicesByCategory);
+    if (expandedCategories.size === categoryNames.length) {
+      setExpandedCategories(new Set()); // Réduire tout
+    } else {
+      setExpandedCategories(new Set(categoryNames)); // Développer tout
+    }
+  };
 
   const servicesByCategory = useMemo(() => {
     if (!services.length || !categories.length) return {};
@@ -307,92 +333,141 @@ const ServiceList = ({ services, categories, onEdit, onDelete, submitting }) => 
               </motion.button>
             ))}
           </div>
+
+          {/* Toggle All Categories Button */}
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={toggleAllCategories}
+            className="px-4 py-3 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 bg-purple-100 text-purple-700 hover:bg-purple-200"
+            title={expandedCategories.size === Object.keys(servicesByCategory).length ? "Réduire tout" : "Développer tout"}
+          >
+            {expandedCategories.size === Object.keys(servicesByCategory).length ? (
+              <ChevronUpIcon className="h-5 w-5" />
+            ) : (
+              <ChevronDownIcon className="h-5 w-5" />
+            )}
+          </motion.button>
         </div>
       </div>
 
-      {Object.entries(servicesByCategory).map(([categoryName, categoryData]) => (
-        <motion.div
-          key={categoryName}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8"
-        >
-          {/* Category Header */}
-          <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
-            <span className="text-2xl">{categoryData.category.icon}</span>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800">{categoryData.category.name}</h3>
-              <p className="text-sm text-gray-500">
-                {categoryData.services.length} service{categoryData.services.length > 1 ? 's' : ''}
-              </p>
-            </div>
-          </div>
-
-          {/* Services Grid */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {categoryData.services.map((service) => (
+      {Object.entries(servicesByCategory).map(([categoryName, categoryData]) => {
+        const isExpanded = expandedCategories.has(categoryName);
+        
+        return (
+          <motion.div
+            key={categoryName}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+          >
+            {/* Category Header - Cliquable */}
+            <motion.button
+              onClick={() => toggleCategory(categoryName)}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full p-8 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{categoryData.category.icon}</span>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800">{categoryData.category.name}</h3>
+                  <p className="text-sm text-gray-500">
+                    {categoryData.services.length} service{categoryData.services.length > 1 ? 's' : ''}
+                  </p>
+                </div>
+              </div>
+              
+              {/* Chevron Icon */}
               <motion.div
-                key={service.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.2 }}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all duration-300"
+                animate={{ rotate: isExpanded ? 180 : 0 }}
+                transition={{ duration: 0.3 }}
+                className="text-gray-400"
               >
-                {/* Service Header */}
-                <div className="flex justify-between items-start mb-4">
-                  <h4 className="font-semibold text-gray-800 flex-1 pr-2">{service.name}</h4>
-                  <div className="text-right ml-3">
-                    <p className="font-bold text-purple-600 text-lg">{service.price} MAD</p>
-                    <p className="text-sm text-gray-600">{service.duration} min</p>
-                  </div>
-                </div>
-
-                {/* Service Description */}
-                {service.description && (
-                  <div className="mb-4">
-                    <p className="text-sm text-gray-600 line-clamp-2">{service.description}</p>
-                  </div>
-                )}
-
-                {/* Service Meta */}
-                <div className="flex items-center gap-4 mb-4 text-sm text-gray-500">
-                  <div className="flex items-center gap-1">
-                    <ClockIcon className="h-4 w-4" />
-                    {service.duration} minutes
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <CurrencyDollarIcon className="h-4 w-4" />
-                    {service.price} MAD
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex gap-2 mt-auto">
-                  <Button 
-                    variant="secondary" 
-                    onClick={() => onEdit(service)} 
-                    className="flex-1 text-sm py-2" 
-                    disabled={submitting}
-                  >
-                    <PencilIcon className="h-4 w-4 mr-1" />
-                    Modifier
-                  </Button>
-                  <Button 
-                    variant="danger" 
-                    onClick={() => onDelete(service.id)} 
-                    className="flex-1 text-sm py-2" 
-                    disabled={submitting}
-                  >
-                    <TrashIcon className="h-4 w-4 mr-1" />
-                    Supprimer
-                  </Button>
-                </div>
+                <ChevronDownIcon className="h-6 w-6" />
               </motion.div>
-            ))}
-          </div>
-        </motion.div>
-      ))}
+            </motion.button>
+
+            {/* Services Grid - Avec animation */}
+            <AnimatePresence>
+              {isExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3, ease: 'easeInOut' }}
+                  className="overflow-hidden"
+                >
+                  <div className="px-8 pb-8">
+                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {categoryData.services.map((service) => (
+                        <motion.div
+                          key={service.id}
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 0.2 }}
+                          className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-lg transition-all duration-300"
+                        >
+                          {/* Service Header */}
+                          <div className="flex justify-between items-start mb-4">
+                            <h4 className="font-semibold text-gray-800 flex-1 pr-2">{service.name}</h4>
+                            <div className="text-right ml-3">
+                              <p className="font-bold text-purple-600 text-lg">{service.price} MAD</p>
+                              <p className="text-sm text-gray-600">{service.duration} min</p>
+                            </div>
+                          </div>
+
+                          {/* Service Description */}
+                          {service.description && (
+                            <div className="mb-4">
+                              <p className="text-sm text-gray-600 line-clamp-2">{service.description}</p>
+                            </div>
+                          )}
+
+                          {/* Service Meta */}
+                          <div className="flex items-center gap-4 mb-4 text-sm text-gray-500">
+                            <div className="flex items-center gap-1">
+                              <ClockIcon className="h-4 w-4" />
+                              {service.duration} minutes
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <CurrencyDollarIcon className="h-4 w-4" />
+                              {service.price} MAD
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex gap-2 mt-auto">
+                            <Button 
+                              variant="secondary" 
+                              onClick={() => onEdit(service)} 
+                              className="flex-1 text-sm py-2" 
+                              disabled={submitting}
+                            >
+                              <PencilIcon className="h-4 w-4 mr-1" />
+                              Modifier
+                            </Button>
+                            <Button 
+                              variant="danger" 
+                              onClick={() => onDelete(service.id)} 
+                              className="flex-1 text-sm py-2" 
+                              disabled={submitting}
+                            >
+                              <TrashIcon className="h-4 w-4 mr-1" />
+                              Supprimer
+                            </Button>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        );
+      })}
     </div>
   );
 };

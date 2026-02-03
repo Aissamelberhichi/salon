@@ -1,21 +1,21 @@
 const express = require('express');
 const router = express.Router();
 const favoriteController = require('../controllers/favorite.controller');
-const { authenticateClient } = require('../middlewares/auth.middleware');
+const { authenticate, authorize } = require('../middlewares/auth.middleware');
 
 // Middleware d'authentification pour toutes les routes
-router.use(authenticateClient);
+router.use(authenticate);
 
 // Ajouter un salon aux favoris
-router.post('/', favoriteController.addToFavorites);
+router.post('/', authorize('CLIENT'), favoriteController.addToFavorites);
 
 // Retirer un salon des favoris
-router.delete('/:salonId', favoriteController.removeFromFavorites);
+router.delete('/:salonId', authorize('CLIENT'), favoriteController.removeFromFavorites);
 
 // Obtenir tous les favoris du client
-router.get('/', favoriteController.getFavorites);
+router.get('/', authorize('CLIENT'), favoriteController.getFavorites);
 
 // Vérifier si un salon est dans les favoris
-router.get('/check/:salonId', favoriteController.isFavorite);
+router.get('/check/:salonId', authorize('CLIENT'), favoriteController.isFavorite);
 
 module.exports = router;

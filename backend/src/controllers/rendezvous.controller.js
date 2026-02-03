@@ -131,6 +131,22 @@ async createRendezVous(req, res, next) {
       next(error);
     }
   }
+
+  async getCoiffeurDisponibilites(req, res, next) {
+    try {
+      const { coiffeurId } = req.params;
+      const disponibilites = await prisma.disponibiliteCoiffeur.findMany({
+        where: { coiffeurId },
+        include: {
+          pauses: true
+        },
+        orderBy: { dayOfWeek: 'asc' }
+      });
+      res.status(200).json(disponibilites);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 module.exports = new RendezVousController();

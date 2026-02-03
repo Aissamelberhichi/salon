@@ -1,9 +1,11 @@
 npx prisma studio == http://localhost:5555
 
 run frend end = npm run dev
-
+taskkill /f /im node.exe
+ npx prisma studio // db on the brower
+ 
 git add .
-git commit -m "frent end"
+git commit -m "Login validation"
 git push origin main
 
 admin : admin@salon-saas.com / admin123

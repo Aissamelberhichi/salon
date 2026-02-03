@@ -5,6 +5,9 @@ import { Home } from './pages/Home';
 import { Login } from './pages/Login';
 import { RegisterClient } from './pages/RegisterClient';
 import { RegisterSalon } from './pages/RegisterSalon';
+import { SalonPendingValidation } from './pages/SalonPendingValidation';
+import { VerifyEmail } from './pages/VerifyEmail';
+import { ResendVerification } from './pages/ResendVerification';
 import { Dashboard } from './pages/Dashboard';
 import { CreateSalon } from './pages/salon/CreateSalon';
 import { SalonDashboard } from './pages/salon/SalonDashboard';
@@ -18,7 +21,7 @@ import { SalonCaissiers } from './pages/salon/SalonCaissiers';
 import { SalonList } from './pages/client/SalonList';
 import { SalonDetail } from './pages/client/SalonDetail';
 import { MyReservations } from './pages/client/MyReservations';
-import { FindSalons } from './pages/client/FindSalons';
+import FindSalons from './pages/client/FindSalons';
 import SalonProfile from './pages/client/SalonProfile';
 import { Favorites } from './pages/client/Favorites';
 import { SalonReservations } from './pages/salon/SalonReservations';
@@ -27,6 +30,7 @@ import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { AdminSalons } from './pages/admin/AdminSalons';
 import { AdminReservations } from './pages/admin/AdminReservations';
 import { AdminClients } from './pages/admin/AdminClients';
+import { AdminSettings } from './pages/admin/AdminSettings';
 import { CaissierDashboard } from './pages/caissier/CaissierDashboard';
 import { CaissierPayment } from './pages/caissier/CaissierPayment';
 
@@ -88,7 +92,24 @@ const RoleRoute = ({ roles, children }) => {
 };
 // Composant spécial pour la route /dashboard qui redirige selon le rôle
 const RoleBasedDashboard = () => {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+      </div>
+    );
+  }
+  
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  // Vérifier si l'email est vérifié pour les clients
+  if (user.role === 'CLIENT' && !user.emailVerified) {
+    return <Navigate to="/verify-email" replace />;
+  }
   
   if (user?.role === 'SALON_OWNER') {
     return <Navigate to="/salon/dashboard" replace />;
@@ -108,6 +129,11 @@ function AppRoutes() {
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/register-client" element={<PublicRoute><RegisterClient /></PublicRoute>} />
       <Route path="/register-salon" element={<PublicRoute><RegisterSalon /></PublicRoute>} />
+      <Route path="/salon-pending-validation" element={<PublicRoute><SalonPendingValidation /></PublicRoute>} />
+      
+      {/* Routes Email Vérification */}
+      <Route path="/verify-email" element={<VerifyEmail />} />
+      <Route path="/resend-verification" element={<ResendVerification />} />
       
       {/* Dashboard principal - redirige selon le rôle */}
       <Route path="/dashboard" element={<PrivateRoute><RoleBasedDashboard /></PrivateRoute>} />
@@ -142,6 +168,7 @@ function AppRoutes() {
       <Route path="/admin/salons" element={<RoleRoute roles={['ADMIN','SUPER_ADMIN']}><AdminSalons /></RoleRoute>} />
       <Route path="/admin/reservations" element={<RoleRoute roles={['ADMIN','SUPER_ADMIN']}><AdminReservations /></RoleRoute>} />
       <Route path="/admin/clients" element={<RoleRoute roles={['ADMIN','SUPER_ADMIN']}><AdminClients /></RoleRoute>} />
+      <Route path="/admin/settings" element={<RoleRoute roles={['ADMIN','SUPER_ADMIN']}><AdminSettings /></RoleRoute>} />
     </Routes>
   );
 }

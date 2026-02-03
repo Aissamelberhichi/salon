@@ -138,9 +138,15 @@ export const Dashboard = () => {
       }
 
       // Charger le score de fidélité (uniquement au chargement initial)
+      // Gérer l'erreur si l'endpoint n'existe pas
       if (!clientScore) {
-        const scoreResponse = await clientScoreAPI.getClientScore(user.id);
-        setClientScore(scoreResponse.data);
+        try {
+          const scoreResponse = await clientScoreAPI.getClientScore(user.id);
+          setClientScore(scoreResponse.data);
+        } catch (scoreError) {
+          console.log('Endpoint client-score non disponible, score non chargé');
+          // Ne pas bloquer le chargement si le score n'est pas disponible
+        }
       }
 
       // Charger les réservations avec timestamp pour éviter le cache
@@ -209,14 +215,15 @@ export const Dashboard = () => {
       // Séparer les réservations selon les nouveaux critères
       // Prochains Rendez-vous: réservations "PENDING", "CONFIRMED" et celles en retard
       const upcoming = reservationsWithReviews.filter(rdv => {
-        const isPendingOrConfirmed = rdv.status === 'PENDING' || rdv.status === 'CONFIRMED';
+        const isActiveStatus = rdv.status === 'PENDING' || rdv.status === 'CONFIRMED' || rdv.status === 'LATE';
         
-        // Vérifier si la réservation est en retard (date passée mais pas terminée)
-        const rdvDateTime = new Date(rdv.date);
+        // Vérifier si la réservation est en retard (date/heure passée + terminée mais pas complétée)
+        // Construire la date et heure complète du rendez-vous
+        const rdvDateTime = new Date(`${rdv.date}T${rdv.endTime}`);
         const now = new Date();
         const isOverdue = rdvDateTime < now && rdv.status !== 'COMPLETED' && rdv.status !== 'CANCELLED';
         
-        const shouldShow = isPendingOrConfirmed || isOverdue;
+        const shouldShow = isActiveStatus || isOverdue;
         console.log(`RDV ${rdv.id}: status=${rdv.status}, en retard=${isOverdue}, afficher=${shouldShow}`);
         return shouldShow;
       });
@@ -318,6 +325,13 @@ export const Dashboard = () => {
         bgColor: 'bg-blue-50',
         borderColor: 'border-blue-200',
         label: 'Terminé'
+      },
+      LATE: {
+        icon: ExclamationCircleIcon,
+        color: 'text-orange-600',
+        bgColor: 'bg-orange-50',
+        borderColor: 'border-orange-200',
+        label: 'En retard'
       }
     };
     return configs[status] || configs.PENDING;
@@ -810,7 +824,7 @@ export const Dashboard = () => {
             {upcomingReservations.length > 0 ? (
               upcomingReservations.map((rdv, index) => {
                 // Vérifier si la réservation est en retard
-                const rdvDateTime = new Date(rdv.date);
+                const rdvDateTime = new Date(`${rdv.date}T${rdv.endTime}`);
                 const now = new Date();
                 const isOverdue = rdvDateTime < now && rdv.status !== 'COMPLETED' && rdv.status !== 'CANCELLED';
                 

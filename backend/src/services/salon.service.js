@@ -2,7 +2,7 @@ const prisma = require('../config/database');
 
 class SalonService {
   async createSalon(ownerId, data) {
-    const { name, description, address, city, postalCode, country, lat, lng, phone, email, website, type } = data;
+    const { name, description, address, city, postalCode, country, lat, lng, phone, email, website } = data;
 
     // Check if salon already exists
     const existingSalon = await prisma.salon.findUnique({
@@ -26,8 +26,7 @@ class SalonService {
         lng,
         phone,
         email,
-        website,
-        type: type || 'MIXED' // Type par défaut si non spécifié
+        website
       },
       include: {
         owner: {

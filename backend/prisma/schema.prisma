@@ -27,15 +27,18 @@ enum DayOfWeek {
 }
 
 model User {
-  id            String    @id @default(uuid())
-  fullName      String    @map("full_name")
-  email         String    @unique
-  phone         String?   @unique
-  role          Role      @default(CLIENT)
-  passwordHash  String    @map("password_hash")
-  isActive      Boolean   @default(true) @map("is_active")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
+  id                    String    @id @default(uuid())
+  fullName              String    @map("full_name")
+  email                 String    @unique
+  phone                 String?   @unique
+  role                  Role      @default(CLIENT)
+  passwordHash          String    @map("password_hash")
+  isActive              Boolean   @default(true) @map("is_active")
+  emailVerified         Boolean   @default(false) @map("email_verified")
+  emailVerificationToken String?  @map("email_verification_token")
+  emailVerificationExpires DateTime? @map("email_verification_expires")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
   
   salon         Salon?    @relation("SalonOwner")
   caissierSalon Salon?    @relation("SalonCaissier")
@@ -44,6 +47,7 @@ model User {
   reviewsGiven  Review[]  @relation("ClientReviews")
   clientScore   ClientScore? @relation("ClientScore")
   favorites     Favorite[] @relation("ClientFavorites")
+  platformSettings PlatformSettings[] @relation("SettingsUpdater")
   
   @@map("users")
 }
@@ -63,7 +67,6 @@ model Salon {
   phone       String?
   email       String?
   website     String?
-  type        SalonType      @default(MIXED)
   isActive    Boolean        @default(true) @map("is_active")
   createdAt   DateTime       @default(now()) @map("created_at")
   updatedAt   DateTime       @updatedAt @map("updated_at")
@@ -123,8 +126,8 @@ model SalonHours {
 
 model ServiceCategory {
   id          String    @id @default(uuid())
-  name        String    @unique
-  icon        String?
+  name        String
+  icon        String?   // Emoji ou icône
   description String?
   isActive    Boolean   @default(true) @map("is_active")
   sortOrder   Int       @default(0) @map("sort_order")
@@ -139,7 +142,7 @@ model ServiceCategory {
 model Service {
   id          String              @id @default(uuid())
   salonId     String              @map("salon_id")
-  categoryId  String              @map("category_id")
+  categoryId  String?             @map("category_id")
   name        String
   description String?
   duration    Int
@@ -149,7 +152,7 @@ model Service {
   updatedAt   DateTime            @updatedAt @map("updated_at")
   
   salon       Salon               @relation(fields: [salonId], references: [id], onDelete: Cascade)
-  category    ServiceCategory     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  category    ServiceCategory?   @relation(fields: [categoryId], references: [id])
   rendezVous  RendezVous[]
   rdvServices RendezVousService[]  // AJOUTER
   
@@ -163,7 +166,7 @@ model Coiffeur {
   fullName    String    @map("full_name")
   email       String?
   phone       String?
-  specialty   String?
+  specialties  String[]
   bio         String?
   photo       String?
   isActive    Boolean   @default(true) @map("is_active")
@@ -196,9 +199,6 @@ enum Gender {
   FEMALE
   OTHER
 }
-
-
-
 enum SalonType {
   MEN
   WOMEN
@@ -254,9 +254,22 @@ model DisponibiliteCoiffeur {
   isAvailable Boolean    @default(true) @map("is_available")
   
   coiffeur    Coiffeur   @relation(fields: [coiffeurId], references: [id], onDelete: Cascade)
+  pauses      CoiffeurPause[]
   
   @@unique([coiffeurId, dayOfWeek])
   @@map("disponibilites_coiffeur")
+}
+
+model CoiffeurPause {
+  id              String         @id @default(uuid())
+  disponibiliteId String         @map("disponibilite_id")
+  startTime       String         @map("start_time")  // Format: "12:00"
+  endTime         String         @map("end_time")    // Format: "13:00"
+  reason          String?                        // Optional reason for break
+  
+  disponibilite   DisponibiliteCoiffeur @relation(fields: [disponibiliteId], references: [id], onDelete: Cascade)
+  
+  @@map("coiffeur_pauses")
 }
 
 model Review {
@@ -273,19 +286,6 @@ model Review {
 
   @@unique([clientId, salonId]) // one review per client per salon
   @@map("reviews")
-}
-
-model Favorite {
-  id        String   @id @default(uuid())
-  clientId  String   @map("client_id")
-  salonId   String   @map("salon_id")
-  createdAt DateTime @default(now()) @map("created_at")
-
-  client User  @relation("ClientFavorites", fields: [clientId], references: [id], onDelete: Cascade)
-  salon  Salon @relation("SalonFavorites", fields: [salonId], references: [id], onDelete: Cascade)
-
-  @@unique([clientId, salonId]) // one favorite per client per salon
-  @@map("favorites")
 }
 
 // Client Scoring System
@@ -323,6 +323,20 @@ model ClientScore {
   @@map("client_scores")
 }
 
+model Favorite {
+  id       String @id @default(uuid())
+  clientId String @map("client_id")
+  salonId  String @map("salon_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  client User  @relation("ClientFavorites", fields: [clientId], references: [id], onDelete: Cascade)
+  salon  Salon @relation("SalonFavorites", fields: [salonId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, salonId])
+  @@map("favorites")
+}
+
 model ClientEvent {
   id         String    @id @default(uuid())
   clientId   String    @map("client_id")
@@ -334,4 +348,21 @@ model ClientEvent {
   client ClientScore @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@map("client_events")
+}
+
+model PlatformSettings {
+  id                        String    @id @default(uuid())
+  bookingTimeBuffer         Int       @default(30) @map("booking_time_buffer") // minutes
+  maxAdvanceBookingDays     Int       @default(30) @map("max_advance_booking_days")
+  autoConfirmReservations   Boolean   @default(false) @map("auto_confirm_reservations")
+  sendEmailNotifications    Boolean   @default(true) @map("send_email_notifications")
+  sendSMSNotifications      Boolean   @default(false) @map("send_sms_notifications")
+  updatedBy                 String?   @map("updated_by")
+  updatedAt                 DateTime  @updatedAt @map("updated_at")
+  createdAt                 DateTime  @default(now()) @map("created_at")
+
+  // Relation to user who updated the settings
+  updatedByUser             User?     @relation("SettingsUpdater", fields: [updatedBy], references: [id])
+
+  @@map("platform_settings")
 }

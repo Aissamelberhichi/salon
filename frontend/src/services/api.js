@@ -6,16 +6,14 @@ const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  withCredentials: true // Important pour les cookies HttpOnly
 });
 
-// Request interceptor to add token
+// Request interceptor - plus besoin d'ajouter le token manuellement
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    // Les cookies HttpOnly sont envoyés automatiquement
     return config;
   },
   (error) => Promise.reject(error)
@@ -31,19 +29,20 @@ api.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        const { data } = await axios.post(`${API_URL}/auth/refresh`, {
-          refreshToken
+        // Utiliser une instance axios dédiée pour éviter les boucles
+        const refreshApi = axios.create({
+          baseURL: API_URL,
+          withCredentials: true
         });
-
-        localStorage.setItem('accessToken', data.accessToken);
-        originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+        
+        await refreshApi.post('/auth/refresh');
 
         return api(originalRequest);
       } catch (refreshError) {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        window.location.href = '/login';
+        // Rediriger seulement si ce n'est pas déjà la page de login
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
         return Promise.reject(refreshError);
       }
     }
@@ -57,9 +56,8 @@ export const authAPI = {
   registerSalonOwner: (data) => api.post('/auth/register/salon-owner', data),
   login: (data) => api.post('/auth/login', data),
   getMe: () => api.get('/auth/me'),
-  refresh: (refreshToken) => api.post('/auth/refresh', { refreshToken })
+  logout: () => api.post('/auth/logout')
 };
-
 
 export const adminAPI = {
   // Stats
@@ -72,7 +70,11 @@ export const adminAPI = {
   listReservations: (params) => api.get('/admin/reservations', { params }),
 
   listClients: (params) => api.get('/admin/clients', { params }),
-  toggleClientActive: (id) => api.put(`/admin/clients/${id}/toggle`)
+  toggleClientActive: (id) => api.put(`/admin/clients/${id}/toggle`),
+  
+  // Settings
+  getSettings: () => api.get('/admin/settings'),
+  updateSettings: (settings) => api.put('/admin/settings', settings)
 };
 
 export const reviewAPI = {
@@ -81,6 +83,11 @@ export const reviewAPI = {
   updateReview: (id, data) => api.put(`/reviews/reviews/${id}`, data),
   deleteReview: (id) => api.delete(`/reviews/reviews/${id}`),
   getMyReviews: () => api.get('/reviews/my-reviews')
+};
+
+export const clientAPI = {
+  updateProfile: (data) => api.put('/client/profile', data),
+  getProfile: () => api.get('/client/profile')
 };
 
 export const clientScoreAPI = {
@@ -102,7 +109,6 @@ export const salonAPI = {
   getAllSalons: (params) => api.get('/salons', { params }),
   getSalonById: (id) => api.get(`/salons/${id}`)
 };
-// Ajouter après salonAPI
 
 export const serviceAPI = {
   getServicesBySalon: (salonId, includeInactive = false) => 
@@ -125,7 +131,6 @@ export const coiffeurAPI = {
   deleteCoiffeur: (id) => api.delete(`/coiffeurs/${id}`)
 };
 
-// Ajouter après coiffeurAPI
 export const caissierAPI = {
   getCaissiers: () => api.get('/caissiers'),
   createCaissier: (data) => api.post('/caissiers', data),
@@ -133,7 +138,6 @@ export const caissierAPI = {
   toggleCaissierActive: (id) => api.put(`/caissiers/${id}/toggle`),
   deleteCaissier: (id) => api.delete(`/caissiers/${id}`)
 };
-// Ajouter après coiffeurAPI
 
 export const rdvAPI = {
   // Public
@@ -154,15 +158,25 @@ export const rdvAPI = {
   getCoiffeurRendezVous: (coiffeurId, date) => 
     api.get(`/rdv/coiffeur/${coiffeurId}`, { params: { date } }),
   setCoiffeurDisponibilite: (coiffeurId, disponibilites) => 
-    api.post(`/rdv/coiffeur/${coiffeurId}/disponibilite`, { disponibilites })
+    api.post(`/rdv/coiffeur/${coiffeurId}/disponibilite`, { disponibilites }),
+  getCoiffeurDisponibilites: (coiffeurId) => 
+    api.get(`/rdv/coiffeur/${coiffeurId}/disponibilites`)
 };
 
-// Ajouter après rdvAPI
 export const favoriteAPI = {
   getFavorites: () => api.get('/favorites'),
   addToFavorites: (salonId) => api.post('/favorites', { salonId }),
   removeFromFavorites: (salonId) => api.delete(`/favorites/${salonId}`),
   isFavorite: (salonId) => api.get(`/favorites/check/${salonId}`)
+};
+
+export const pauseAPI = {
+  createPause: (disponibiliteId, data) => api.post(`/pauses/disponibilites/${disponibiliteId}/pauses`, data),
+  getPausesByDisponibilite: (disponibiliteId) => api.get(`/pauses/disponibilites/${disponibiliteId}/pauses`),
+  getPausesByCoiffeur: (coiffeurId) => api.get(`/pauses/coiffeurs/${coiffeurId}/pauses`),
+  updatePause: (pauseId, data) => api.put(`/pauses/pauses/${pauseId}`, data),
+  deletePause: (pauseId) => api.delete(`/pauses/pauses/${pauseId}`),
+  setPausesForDisponibilite: (disponibiliteId, pauses) => api.put(`/pauses/disponibilites/${disponibiliteId}/pauses`, pauses)
 };
 
 export default api;

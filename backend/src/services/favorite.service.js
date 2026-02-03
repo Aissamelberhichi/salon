@@ -49,7 +49,7 @@ class FavoriteService {
     // Vérifier si déjà en favoris
     const existingFavorite = await prisma.$queryRaw`
       SELECT * FROM "favorites" 
-      WHERE "clientId" = ${clientId} AND "salonId" = ${salonId}
+      WHERE "client_id" = ${clientId} AND "salon_id" = ${salonId}
       LIMIT 1
     `;
 
@@ -61,17 +61,17 @@ class FavoriteService {
     const favoriteId = 'fav_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     
     await prisma.$queryRaw`
-      INSERT INTO "favorites" ("id", "clientId", "salonId", "createdAt")
+      INSERT INTO "favorites" ("id", "client_id", "salon_id", "created_at")
       VALUES (${favoriteId}, ${clientId}, ${salonId}, NOW())
     `;
 
-    // Retourner le favori créé avec le salon et ses images
+    // Retourner le favori créé avec le salon et ses images aplaties
     return {
       id: favoriteId,
       clientId,
       salonId,
       createdAt: new Date(),
-      salon
+      ...salon  // Aplatir les données du salon pour éviter la structure imbriquée
     };
   }
 
@@ -79,7 +79,7 @@ class FavoriteService {
     // Vérifier si le favori existe
     const existingFavorite = await prisma.$queryRaw`
       SELECT * FROM "favorites" 
-      WHERE "clientId" = ${clientId} AND "salonId" = ${salonId}
+      WHERE "client_id" = ${clientId} AND "salon_id" = ${salonId}
       LIMIT 1
     `;
 
@@ -90,7 +90,7 @@ class FavoriteService {
     // Supprimer le favori
     await prisma.$queryRaw`
       DELETE FROM "favorites" 
-      WHERE "clientId" = ${clientId} AND "salonId" = ${salonId}
+      WHERE "client_id" = ${clientId} AND "salon_id" = ${salonId}
     `;
 
     return { message: 'Salon retiré des favoris avec succès' };
@@ -101,9 +101,9 @@ class FavoriteService {
     const favorites = await prisma.$queryRaw`
       SELECT 
         f.id as "id",
-        f."clientId" as "clientId", 
-        f."salonId" as "salonId", 
-        f."createdAt" as "createdAt",
+        f."client_id" as "clientId", 
+        f."salon_id" as "salonId", 
+        f."created_at" as "createdAt",
         s.id as "salon_id",
         s.name,
         s.address,
@@ -133,11 +133,11 @@ class FavoriteService {
           '[]'::json
         ) as images
       FROM "favorites" f
-      INNER JOIN "salons" s ON f."salonId" = s.id
+      INNER JOIN "salons" s ON f."salon_id" = s.id
       LEFT JOIN "salon_images" si ON s.id = si.salon_id
-      WHERE f."clientId" = ${clientId}
+      WHERE f."client_id" = ${clientId}
       GROUP BY f.id, s.id, s.name, s.address, s.city, s."postal_code", s.country, s.lat, s.lng, s.phone, s.email, s.website, s.description, s.type, s."is_active", s."created_at", s."updated_at"
-      ORDER BY f."createdAt" DESC
+      ORDER BY f."created_at" DESC
     `;
 
     // Formater les résultats pour correspondre à ce que le frontend attend
@@ -154,7 +154,7 @@ class FavoriteService {
     // Vérifier si c'est un favori avec SQL brut
     const favorite = await prisma.$queryRaw`
       SELECT * FROM "favorites" 
-      WHERE "clientId" = ${clientId} AND "salonId" = ${salonId}
+      WHERE "client_id" = ${clientId} AND "salon_id" = ${salonId}
       LIMIT 1
     `;
 

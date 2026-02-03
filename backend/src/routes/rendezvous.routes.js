@@ -58,4 +58,7 @@ router.put('/:id/status', authenticate, updateStatusValidation, rdvController.up
 // Set coiffeur availability
 router.post('/coiffeur/:coiffeurId/disponibilite', authenticate, authorize('SALON_OWNER', 'ADMIN'), rdvController.setCoiffeurDisponibilite);
 
+// Get coiffeur disponibilites
+router.get('/coiffeur/:coiffeurId/disponibilites', authenticate, authorize('SALON_OWNER', 'ADMIN'), rdvController.getCoiffeurDisponibilites);
+
 module.exports = router;

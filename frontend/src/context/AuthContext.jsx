@@ -12,47 +12,43 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const checkAuth = async () => {
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      try {
-        const { data } = await authAPI.getMe();
-        setUser(data.user);
-      } catch (error) {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-      }
+    try {
+      const { data } = await authAPI.getMe();
+      setUser(data.user);
+    } catch (error) {
+      setUser(null);
     }
     setLoading(false);
   };
 
   const login = async (email, password) => {
     const { data } = await authAPI.login({ email, password });
-    localStorage.setItem('accessToken', data.accessToken);
-    localStorage.setItem('refreshToken', data.refreshToken);
     setUser(data.user);
     return data;
   };
 
   const registerClient = async (formData) => {
     const { data } = await authAPI.registerClient(formData);
-    localStorage.setItem('accessToken', data.accessToken);
-    localStorage.setItem('refreshToken', data.refreshToken);
-    setUser(data.user);
+    // Ne pas connecter automatiquement après inscription
+    // L'utilisateur doit vérifier son email d'abord
     return data;
   };
 
   const registerSalonOwner = async (formData) => {
     const { data } = await authAPI.registerSalonOwner(formData);
-    localStorage.setItem('accessToken', data.accessToken);
-    localStorage.setItem('refreshToken', data.refreshToken);
-    setUser(data.user);
+    // Ne pas connecter automatiquement après inscription
+    // L'utilisateur doit vérifier son email d'abord
     return data;
   };
 
-  const logout = () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    setUser(null);
+  const logout = async () => {
+    try {
+      await authAPI.logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setUser(null);
+    }
   };
 
   return (

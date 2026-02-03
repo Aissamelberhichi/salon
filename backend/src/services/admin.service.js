@@ -1,4 +1,7 @@
-const prisma = require('../config/database');
+const { PrismaClient } = require('@prisma/client');
+const emailService = require('../utils/emailService');
+
+const prisma = new PrismaClient();
 
 class AdminService {
   async getStats() {
@@ -33,19 +36,95 @@ class AdminService {
 
   async approveSalon(id) {
     // business rule: approving = set isActive true
-    return prisma.salon.update({
+    const salon = await prisma.salon.findUnique({
       where: { id },
-      data: { isActive: true, updatedAt: new Date() }
+      include: { owner: { select: { fullName: true, email: true, id: true } } }
     });
+    
+    if (!salon) throw new Error('Salon not found');
+    
+    // Mettre à jour le salon ET activer le compte utilisateur
+    const [updatedSalon] = await Promise.all([
+      // Activer le salon
+      prisma.salon.update({
+        where: { id },
+        data: { isActive: true, updatedAt: new Date() }
+      }),
+      // Activer le compte utilisateur
+      prisma.user.update({
+        where: { id: salon.owner.id },
+        data: { isActive: true, updatedAt: new Date() }
+      })
+    ]);
+
+    // Envoyer un email d'approbation au propriétaire
+    try {
+      await emailService.sendSalonApprovalEmail(salon.owner.email, {
+        ownerName: salon.owner.fullName,
+        salonName: salon.name,
+        salonCity: salon.city
+      });
+      console.log(`✅ Email d'approbation envoyé à ${salon.owner.email}`);
+      console.log(`✅ Compte utilisateur activé pour ${salon.owner.email}`);
+    } catch (emailError) {
+      console.error('❌ Erreur lors de l\'envoi de l\'email d\'approbation:', emailError);
+      // Ne pas échouer l'approbation si l'email échoue
+    }
+
+    return updatedSalon;
   }
 
   async toggleSalonActive(id) {
-    const salon = await prisma.salon.findUnique({ where: { id } });
-    if (!salon) throw new Error('Salon not found');
-    return prisma.salon.update({
+    const salon = await prisma.salon.findUnique({
       where: { id },
-      data: { isActive: !salon.isActive, updatedAt: new Date() }
+      include: { owner: { select: { fullName: true, email: true, id: true } } }
     });
+    
+    if (!salon) throw new Error('Salon not found');
+    
+    const newStatus = !salon.isActive;
+    
+    // Mettre à jour le salon ET le compte utilisateur
+    const [updatedSalon] = await Promise.all([
+      // Activer/désactiver le salon
+      prisma.salon.update({
+        where: { id },
+        data: { isActive: newStatus, updatedAt: new Date() }
+      }),
+      // Activer/désactiver le compte utilisateur
+      prisma.user.update({
+        where: { id: salon.owner.id },
+        data: { isActive: newStatus, updatedAt: new Date() }
+      })
+    ]);
+
+    // Envoyer un email de notification au propriétaire
+    try {
+      if (newStatus) {
+        // Email d'activation
+        await emailService.sendSalonActivationEmail(salon.owner.email, {
+          ownerName: salon.owner.fullName,
+          salonName: salon.name,
+          salonCity: salon.city
+        });
+        console.log(`✅ Email d'activation envoyé à ${salon.owner.email}`);
+        console.log(`✅ Compte utilisateur activé pour ${salon.owner.email}`);
+      } else {
+        // Email de désactivation
+        await emailService.sendSalonDeactivationEmail(salon.owner.email, {
+          ownerName: salon.owner.fullName,
+          salonName: salon.name,
+          salonCity: salon.city
+        });
+        console.log(`✅ Email de désactivation envoyé à ${salon.owner.email}`);
+        console.log(`✅ Compte utilisateur désactivé pour ${salon.owner.email}`);
+      }
+    } catch (emailError) {
+      console.error('❌ Erreur lors de l\'envoi de l\'email de notification:', emailError);
+      // Ne pas échouer l'activation/désactivation si l'email échoue
+    }
+
+    return updatedSalon;
   }
 
   async listReservations({ status, date, salonId }) {
