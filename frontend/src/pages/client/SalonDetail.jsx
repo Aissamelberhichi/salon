@@ -150,7 +150,7 @@ export const SalonDetail = () => {
       const selectedDateObj = new Date(selectedDate);
       const isToday = selectedDateObj.toDateString() === now.toDateString();
       
-      // Filter slots based on current time only (backend already handles availability and pauses)
+      // Filter slots based on current time and service duration
       const filteredSlots = (data || []).filter(slot => {
         // Check both possible time field names
         const slotTime = slot.time || slot.startTime;
@@ -164,6 +164,25 @@ export const SalonDetail = () => {
         
         // If it's today, filter out slots before current time + booking buffer
         if (isToday && slotInMinutes <= currentTime + bookingTimeBuffer) {
+          return false;
+        }
+        
+        // Calculate service duration for the first selected service
+        const firstServiceId = selectedServices[0];
+        let serviceDuration = 60; // default 60 minutes
+        
+        if (firstServiceId) {
+          const service = services.find(s => s.id === firstServiceId);
+          if (service) {
+            serviceDuration = service.duration || 60;
+          }
+        }
+        
+        // Check if slot + service duration exceeds a reasonable closing time (23:59)
+        const slotEndMinutes = slotInMinutes + serviceDuration;
+        const latestAllowedTime = 23 * 60 + 59; // 23:59 in minutes
+        
+        if (slotEndMinutes > latestAllowedTime) {
           return false;
         }
         

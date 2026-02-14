@@ -54,80 +54,143 @@ class RendezVousService {
   }
 
   async getAvailableSlots(coiffeurId, date, serviceId) {
-    const coiffeur = await prisma.coiffeur.findUnique({
-      where: { id: coiffeurId },
-      include: {
-        disponibilites: {
-          include: { pauses: true },
-          where: { dayOfWeek: new Date(date).getDay() === 0 ? 6 : new Date(date).getDay() - 1 }
+    try {
+      console.log('🔍 DEBUG getAvailableSlots:', { coiffeurId, date, serviceId });
+      
+      // Validate date format
+      if (!date || isNaN(Date.parse(date))) {
+        console.error('❌ Date invalide:', date);
+        return [];
+      }
+      
+      // Convert JavaScript day to database enum day names
+      const jsDay = new Date(date).getDay();
+      const dayMapping = {
+        1: 'MONDAY',    // Lundi
+        2: 'TUESDAY',   // Mardi  
+        3: 'WEDNESDAY', // Mercredi
+        4: 'THURSDAY',  // Jeudi
+        5: 'FRIDAY',    // Vendredi
+        6: 'SATURDAY',  // Samedi
+        0: 'SUNDAY'     // Dimanche
+      };
+      const dbDay = dayMapping[jsDay];
+      
+      console.log('📅 Date analysis:', {
+        inputDate: date,
+        parsedDate: new Date(date),
+        jsDay,
+        dbDay,
+        dayName: ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'][jsDay]
+      });
+      
+      if (!dbDay) {
+        console.error('❌ Invalid day mapping for jsDay:', jsDay);
+        return [];
+      }
+      
+      const coiffeur = await prisma.coiffeur.findUnique({
+        where: { id: coiffeurId },
+        include: {
+          disponibilites: {
+            include: { pauses: true },
+            where: { dayOfWeek: dbDay }
+          }
+        }
+      });
+
+      console.log('👤 Coiffeur trouvé:', coiffeur ? 'Oui' : 'Non');
+      console.log('📅 Disponibilités trouvées:', coiffeur?.disponibilites?.length || 0);
+      
+      if (!coiffeur || !coiffeur.disponibilites.length) {
+        console.log('❌ Aucune disponibilité trouvée - retour vide');
+        return [];
+      }
+
+      const availability = coiffeur.disponibilites[0];
+      console.log('⏰ Première disponibilité:', {
+        dayOfWeek: availability.dayOfWeek,
+        startTime: availability.startTime,
+        endTime: availability.endTime,
+        isAvailable: availability.isAvailable,
+        pausesCount: availability.pauses?.length || 0
+      });
+      
+      if (!availability.isAvailable) {
+        console.log('❌ Coiffeur non disponible ce jour - retour vide');
+        return [];
+      }
+
+      // Get service duration
+      let serviceDuration = 60; // default
+      if (serviceId) {
+        const service = await prisma.service.findUnique({ where: { id: serviceId } });
+        if (service) serviceDuration = service.duration;
+      }
+
+      const buffer = coiffeur.bufferMinutes || 5;
+      const startTime = parseHHMM(availability.startTime);
+      const endTime = parseHHMM(availability.endTime);
+
+      console.log('⏱️ Time calculations:', {
+        serviceDuration,
+        buffer,
+        startTime: availability.startTime,
+        endTime: availability.endTime,
+        startTimeMinutes: startTime,
+        endTimeMinutes: endTime
+      });
+
+      // Get existing rendezvous for that day
+      const existingRdvs = await prisma.rendezVous.findMany({
+        where: {
+          coiffeurId,
+          date: new Date(date),
+          status: { in: ['PENDING', 'CONFIRMED'] }
+        }
+      });
+
+      console.log('📋 Existing RDVs found:', existingRdvs.length);
+
+      // Combine existing rendezvous and pauses
+      const existingRanges = existingRdvs.map(rdv => ({
+        start: parseHHMM(rdv.startTime),
+        end: parseHHMM(rdv.endTime)
+      }));
+
+      const pauseRanges = availability.pauses.map(pause => ({
+        start: parseHHMM(pause.startTime),
+        end: parseHHMM(pause.endTime)
+      }));
+
+      // Combine existing rendezvous and pauses
+      const allExcludeRanges = [...existingRanges, ...pauseRanges];
+
+      const step = 5;
+      const slots = [];
+      
+      for (let t = startTime; t + serviceDuration + buffer <= endTime; t += step) {
+        const proposedStart = t;
+        const proposedEnd = t + serviceDuration;
+        const proposedEndWithBuffer = proposedEnd + buffer;
+
+        const overlaps = allExcludeRanges.some(r =>
+          !(proposedStart >= r.end || proposedEndWithBuffer <= r.start)
+        );
+
+        if (!overlaps) {
+          slots.push({ time: toHHMM(proposedStart), available: true });
         }
       }
-    });
 
-    if (!coiffeur || !coiffeur.disponibilites.length) {
+      console.log('✅ Slots generated:', slots.length);
+      return slots;
+      
+    } catch (error) {
+      console.error('💥 ERROR in getAvailableSlots:', error);
+      console.error('Stack trace:', error.stack);
       return [];
     }
-
-    const availability = coiffeur.disponibilites[0];
-    if (!availability.isAvailable) {
-      return [];
-    }
-
-    // Get service duration
-    let serviceDuration = 60; // default
-    if (serviceId) {
-      const service = await prisma.service.findUnique({ where: { id: serviceId } });
-      if (service) serviceDuration = service.duration;
-    }
-
-    const buffer = coiffeur.bufferMinutes || 5;
-    const startTime = parseHHMM(availability.startTime);
-    const endTime = parseHHMM(availability.endTime);
-
-    // Get existing rendezvous for that day
-    const existingRdvs = await prisma.rendezVous.findMany({
-      where: {
-        coiffeurId,
-        date: new Date(date),
-        status: { in: ['PENDING', 'CONFIRMED'] }
-      }
-    });
-
-    // Combine existing rendezvous and pauses
-    const existingRanges = existingRdvs.map(rdv => ({
-      start: parseHHMM(rdv.startTime),
-      end: parseHHMM(rdv.endTime)
-    }));
-
-    const pauseRanges = availability.pauses.map(pause => ({
-      start: parseHHMM(pause.startTime),
-      end: parseHHMM(pause.endTime)
-    }));
-
-    // Combine existing rendezvous and pauses
-    const allExcludeRanges = [...existingRanges, ...pauseRanges];
-
-    const availStart = parseHHMM(availability.startTime);
-    const availEnd = parseHHMM(endTime);
-
-    const step = 5;
-    const slots = [];
-    
-    for (let t = availStart; t + serviceDuration + buffer <= availEnd; t += step) {
-      const proposedStart = t;
-      const proposedEnd = t + serviceDuration;
-      const proposedEndWithBuffer = proposedEnd + buffer;
-
-      const overlaps = allExcludeRanges.some(r =>
-        !(proposedStart >= r.end || proposedEndWithBuffer <= r.start)
-      );
-
-      if (!overlaps) {
-        slots.push({ time: toHHMM(proposedStart), available: true });
-      }
-    }
-
-    return slots;
   }
 
   async createRendezVous(clientId, data) {

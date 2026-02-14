@@ -17,25 +17,41 @@ class RendezVousController {
   }
 
   async getAvailableSlots(req, res, next) {
+    console.log('=== API CALL: getAvailableSlots ===');
+    console.log('URL:', req.url);
+    console.log('Query:', req.query);
+    
     try {
       const { coiffeurId, date, serviceId } = req.query;
+      
       if (!coiffeurId || !date) {
+        console.log('❌ Missing parameters');
         return res.status(400).json({ error: 'coiffeurId and date are required' });
       }
 
-      // Guard: if coiffeur's salon is deactivated, return no slots
+      console.log('🔍 Searching coiffeur:', coiffeurId);
+      
       const coiffeur = await prisma.coiffeur.findUnique({
         where: { id: coiffeurId },
         include: { salon: { select: { isActive: true } } }
       });
-      if (!coiffeur) return res.status(404).json({ error: 'Coiffeur not found' });
+      
+      if (!coiffeur) {
+        console.log('❌ Coiffeur not found');
+        return res.status(404).json({ error: 'Coiffeur not found' });
+      }
+      
       if (coiffeur.salon && coiffeur.salon.isActive === false) {
+        console.log('❌ Salon deactivated');
         return res.status(200).json([]);
       }
 
+      console.log('✅ Coiffeur found, getting slots...');
       const slots = await rdvService.getAvailableSlots(coiffeurId, date, serviceId);
+      console.log('📤 Slots result:', slots.length, 'slots');
       res.status(200).json(slots);
     } catch (error) {
+      console.error('💥 ERROR:', error.message);
       next(error);
     }
   }
