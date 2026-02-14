@@ -67,8 +67,8 @@ export const CaissierPayment = () => {
       setProcessing(true);
       setError('');
 
-      // Ici, nous allons marquer la réservation comme payée et terminée
-      await rdvAPI.updateRdvStatus(rdvId, 'COMPLETED');
+      // Marquer la réservation comme payée et terminée
+      await rdvAPI.updateRdvStatus(rdvId, 'COMPLETED', { paymentStatus: 'PAID' });
 
       // TODO: Enregistrer le paiement dans une table dédiée si nécessaire
 

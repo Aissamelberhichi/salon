@@ -39,8 +39,8 @@ api.interceptors.response.use(
 
         return api(originalRequest);
       } catch (refreshError) {
-        // Rediriger seulement si ce n'est pas déjà la page de login
-        if (!window.location.pathname.includes('/login')) {
+        // Rediriger seulement si ce n'est pas déjà la page de login ET pas sur reset-password
+        if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/reset-password')) {
           window.location.href = '/login';
         }
         return Promise.reject(refreshError);
@@ -56,7 +56,10 @@ export const authAPI = {
   registerSalonOwner: (data) => api.post('/auth/register/salon-owner', data),
   login: (data) => api.post('/auth/login', data),
   getMe: () => api.get('/auth/me'),
-  logout: () => api.post('/auth/logout')
+  logout: () => api.post('/auth/logout'),
+  requestPasswordReset: (data) => api.post('/email/request-password-reset', data),
+  resetPassword: (data) => api.post('/email/reset-password', data),
+  resendVerificationEmail: (email) => api.post('/email/resend-verification', { email })
 };
 
 export const adminAPI = {
@@ -149,7 +152,7 @@ export const rdvAPI = {
   // Client
   createRendezVous: (data) => api.post('/rdv/book', data),
   getMyReservations: (status) => api.get('/rdv/my-reservations', { params: { status } }),
-  updateRdvStatus: (id, status) => api.put(`/rdv/${id}/status`, { status }),
+  updateRdvStatus: (id, status, data = {}) => api.put(`/rdv/${id}/status`, { status, ...data }),
   getRdvById: (id) => api.get(`/rdv/${id}`),
   
   // Salon

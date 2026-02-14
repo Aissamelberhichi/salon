@@ -874,7 +874,91 @@ const SalonProfile = () => {
                     </div>
                   )}
 
-                  {salon.openingHours && (
+                  {salon.hours && salon.hours.length > 0 && (
+                    <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6">
+                      <div className="flex items-start gap-4">
+                        <div className="p-3 bg-green-100 rounded-xl">
+                          <ClockIcon className="h-6 w-6 text-green-600" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-4">Horaires d'ouverture</h3>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {[
+                              { day: 'Lundi', value: 'MONDAY' },
+                              { day: 'Mardi', value: 'TUESDAY' },
+                              { day: 'Mercredi', value: 'WEDNESDAY' },
+                              { day: 'Jeudi', value: 'THURSDAY' },
+                              { day: 'Vendredi', value: 'FRIDAY' },
+                              { day: 'Samedi', value: 'SATURDAY' },
+                              { day: 'Dimanche', value: 'SUNDAY' }
+                            ].map(({ day, value }) => {
+                              const dayHours = salon.hours.find(h => h.dayOfWeek === value);
+                              const isOpen = dayHours && !dayHours.isClosed;
+                              const currentTime = new Date();
+                              const currentDayIndex = currentTime.getDay(); // 0 = Dimanche, 1 = Lundi, etc.
+                              const dayMapping = { 0: 'SUNDAY', 1: 'MONDAY', 2: 'TUESDAY', 3: 'WEDNESDAY', 4: 'THURSDAY', 5: 'FRIDAY', 6: 'SATURDAY' };
+                              const currentDay = dayMapping[currentDayIndex];
+                              const isToday = value === currentDay;
+                              
+                              return (
+                                <div 
+                                  key={value} 
+                                  className={`flex items-center justify-between p-3 rounded-lg border ${
+                                    isToday 
+                                      ? 'bg-green-100 border-green-300' 
+                                      : 'bg-white border-gray-200'
+                                  }`}
+                                >
+                                  <span className={`font-medium text-sm ${
+                                    isToday ? 'text-green-800' : 'text-gray-700'
+                                  }`}>
+                                    {day}
+                                    {isToday && (
+                                      <span className="ml-2 text-xs bg-green-600 text-white px-2 py-1 rounded-full">
+                                        Aujourd'hui
+                                      </span>
+                                    )}
+                                  </span>
+                                  <span className={`text-sm font-semibold ${
+                                    isOpen 
+                                      ? 'text-green-600' 
+                                      : 'text-red-600'
+                                  }`}>
+                                    {isOpen 
+                                      ? `${dayHours.openTime} - ${dayHours.closeTime}`
+                                      : 'Fermé'
+                                    }
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          
+                          {/* Statut actuel */}
+                          <div className="mt-4 p-3 bg-white rounded-lg border border-green-200">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium text-gray-700">Statut actuel:</span>
+                              <span className="text-sm font-bold text-green-600 flex items-center gap-2">
+                                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                {(() => {
+                                  const currentTime = new Date();
+                                  const currentDayIndex = currentTime.getDay();
+                                  const dayMapping = { 0: 'SUNDAY', 1: 'MONDAY', 2: 'TUESDAY', 3: 'WEDNESDAY', 4: 'THURSDAY', 5: 'FRIDAY', 6: 'SATURDAY' };
+                                  const currentDay = dayMapping[currentDayIndex];
+                                  const todayHours = salon.hours.find(h => h.dayOfWeek === currentDay);
+                                  const isOpen = todayHours && !todayHours.isClosed;
+                                  return isOpen ? 'Ouvert maintenant' : 'Fermé maintenant';
+                                })()}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Fallback pour ancien format openingHours */}
+                  {!salon.hours && salon.openingHours && (
                     <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6">
                       <div className="flex items-start gap-4">
                         <div className="p-3 bg-green-100 rounded-xl">
@@ -1169,3 +1253,4 @@ const SalonProfile = () => {
 };
 
 export default SalonProfile;
+export { SalonProfile };

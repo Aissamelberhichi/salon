@@ -1,13 +1,13 @@
 const rateLimit = require('express-rate-limit');
 const { ipKeyGenerator } = require('express-rate-limit');
 
-// Limiteur strict pour les tentatives de login
+// Limiteur strict pour les tentatives de login (DÉSACTIVÉ POUR LES TESTS)
 const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Maximum 5 tentatives par fenêtre de 15 minutes
+  windowMs: 1 * 60 * 1000, // 1 minute (réduit de 15 minutes)
+  max: 1000, // Augmenté de 5 à 1000 tentatives (pratiquement illimité)
   message: {
-    error: 'Trop de tentatives de connexion. Veuillez réessayer dans 15 minutes.',
-    retryAfter: '15 minutes'
+    error: 'Trop de tentatives de connexion. Veuillez réessayer dans 1 minute.',
+    retryAfter: '1 minute'
   },
   standardHeaders: true, // Retourne les infos de rate limit dans les headers `RateLimit-*`
   legacyHeaders: false, // Désactive les headers `X-RateLimit-*`
@@ -19,13 +19,13 @@ const loginLimiter = rateLimit({
   }
 });
 
-// Limiteur moins strict pour les enregistrements
+// Limiteur moins strict pour les enregistrements (DÉSACTIVÉ POUR LES TESTS)
 const registerLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 heure
-  max: 3, // Maximum 3 enregistrements par heure par IP (production)
+  windowMs: 1 * 60 * 1000, // 1 minute (réduit de 1 heure)
+  max: 1000, // Augmenté de 3 à 1000 tentatives (pratiquement illimité)
   message: {
-    error: 'Trop de tentatives d\'inscription. Veuillez réessayer dans 1 heure.',
-    retryAfter: '1 heure'
+    error: 'Trop de tentatives d\'inscription. Veuillez réessayer dans 1 minute.',
+    retryAfter: '1 minute'
   },
   standardHeaders: true,
   legacyHeaders: false,

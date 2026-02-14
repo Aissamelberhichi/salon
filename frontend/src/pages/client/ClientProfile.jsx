@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import { clientScoreAPI } from '../../services/api';
+import { clientScoreAPI, authAPI } from '../../services/api';
 import { Button } from '../../components/common/Button';
 
 export const ClientProfile = () => {
@@ -9,6 +9,17 @@ export const ClientProfile = () => {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  // États pour le changement de mot de passe
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
 
   useEffect(() => {
     if (user?.id) {
@@ -30,6 +41,77 @@ export const ClientProfile = () => {
       setError(err.response?.data?.error || 'Erreur lors du chargement');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fonctions pour le changement de mot de passe
+  const handlePasswordChange = (e) => {
+    setPasswordData({
+      ...passwordData,
+      [e.target.name]: e.target.value
+    });
+    setPasswordError('');
+    setPasswordSuccess('');
+  };
+
+  const validatePassword = (password) => {
+    const errors = [];
+    if (password.length < 8 || password.length > 128) {
+      errors.push('Le mot de passe doit contenir entre 8 et 128 caractères');
+    }
+    if (!/(?=.*[a-z])/.test(password)) {
+      errors.push('Le mot de passe doit contenir au moins une lettre minuscule');
+    }
+    if (!/(?=.*[A-Z])/.test(password)) {
+      errors.push('Le mot de passe doit contenir au moins une lettre majuscule');
+    }
+    if (!/(?=.*\d)/.test(password)) {
+      errors.push('Le mot de passe doit contenir au moins un chiffre');
+    }
+    if (!/(?=.*[@$!%*?&])/.test(password)) {
+      errors.push('Le mot de passe doit contenir au moins un caractère spécial (@$!%*?&)');
+    }
+    return errors;
+  };
+
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    setPasswordLoading(true);
+    setPasswordError('');
+    setPasswordSuccess('');
+
+    // Validation des mots de passe
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPasswordError('Les mots de passe ne correspondent pas');
+      setPasswordLoading(false);
+      return;
+    }
+
+    const passwordErrors = validatePassword(passwordData.newPassword);
+    if (passwordErrors.length > 0) {
+      setPasswordError(passwordErrors.join('. '));
+      setPasswordLoading(false);
+      return;
+    }
+
+    try {
+      const response = await authAPI.resetPassword({
+        token: 'change-password-from-profile', // Token spécial pour le changement depuis profile
+        newPassword: passwordData.newPassword
+      });
+      
+      setPasswordSuccess(response.message);
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      
+      // Fermer le formulaire après 3 secondes
+      setTimeout(() => {
+        setShowPasswordForm(false);
+        setPasswordSuccess('');
+      }, 3000);
+    } catch (err) {
+      setPasswordError(err.response?.data?.message || 'Une erreur est survenue');
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
@@ -148,6 +230,97 @@ export const ClientProfile = () => {
             </div>
           ) : (
             <p className="text-gray-500">Aucun événement enregistré</p>
+          )}
+        </div>
+
+        {/* Section Changement de Mot de Passe */}
+        <div className="bg-white rounded-lg shadow p-6 mt-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold">Sécurité du Compte</h2>
+            <Button 
+              onClick={() => setShowPasswordForm(!showPasswordForm)}
+              variant="secondary"
+            >
+              {showPasswordForm ? 'Annuler' : 'Changer le mot de passe'}
+            </Button>
+          </div>
+
+          {showPasswordForm && (
+            <div className="space-y-4">
+              {passwordSuccess && (
+                <div className="mb-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+                  {passwordSuccess}
+                </div>
+              )}
+
+              {passwordError && (
+                <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                  {passwordError}
+                </div>
+              )}
+
+              <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Mot de passe actuel
+                  </label>
+                  <input
+                    type="password"
+                    name="currentPassword"
+                    value={passwordData.currentPassword}
+                    onChange={handlePasswordChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="Entrez votre mot de passe actuel"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nouveau mot de passe
+                  </label>
+                  <input
+                    type="password"
+                    name="newPassword"
+                    value={passwordData.newPassword}
+                    onChange={handlePasswordChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="Nouveau mot de passe (8+ caractères, majuscule, chiffre, spécial)"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Confirmer le nouveau mot de passe
+                  </label>
+                  <input
+                    type="password"
+                    name="confirmPassword"
+                    value={passwordData.confirmPassword}
+                    onChange={handlePasswordChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="Confirmez le nouveau mot de passe"
+                    required
+                  />
+                </div>
+
+                <div className="text-xs text-gray-500 mt-2">
+                  <p>• 8-128 caractères</p>
+                  <p>• Au moins une lettre minuscule, une majuscule, un chiffre</p>
+                  <p>• Au moins un caractère spécial (@$!%*?&)</p>
+                </div>
+
+                <Button
+                  type="submit"
+                  loading={passwordLoading}
+                  disabled={passwordLoading}
+                  className="w-full"
+                >
+                  {passwordLoading ? 'Mise à jour...' : 'Mettre à jour le mot de passe'}
+                </Button>
+              </form>
+            </div>
           )}
         </div>
       </div>

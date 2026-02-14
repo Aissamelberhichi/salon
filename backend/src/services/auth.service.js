@@ -312,7 +312,36 @@ class AuthService {
   }
 
   // Réinitialiser le mot de passe
-  async resetPassword(token, newPassword) {
+  async resetPassword(token, newPassword, req) {
+    // Cas spécial pour le changement depuis le profile
+    if (token === 'change-password-from-profile') {
+      // Récupérer l'utilisateur connecté depuis le middleware
+      // Note: dans un vrai cas, on devrait passer l'ID utilisateur
+      // Pour cette implémentation, on utilise un token spécial
+      
+      // Récupérer l'ID utilisateur depuis le contexte d'authentification
+      // Note: le middleware devrait stocker l'ID utilisateur dans la requête
+      const userId = req.user?.id;
+      
+      if (!userId) {
+        throw new Error('Utilisateur non connecté');
+      }
+      
+      // Hasher le nouveau mot de passe
+      const passwordHash = await hashService.hash(newPassword);
+
+      // Mettre à jour l'utilisateur avec son ID
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          passwordHash
+        }
+      });
+
+      return { message: 'Mot de passe changé avec succès' };
+    }
+
+    // Logique normale pour la réinitialisation par email
     const user = await prisma.user.findFirst({
       where: {
         emailVerificationToken: token,

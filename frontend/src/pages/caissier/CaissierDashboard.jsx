@@ -182,18 +182,20 @@ export const CaissierDashboard = () => {
             }
             .header {
               text-align: center;
-              border-bottom: 1px dashed #000;
+              border-bottom: 2px solid #000;
               padding-bottom: 10px;
               margin-bottom: 15px;
             }
             .title {
-              font-size: 16px;
+              font-size: 18px;
               font-weight: bold;
               margin-bottom: 5px;
+              text-transform: uppercase;
             }
             .subtitle {
-              font-size: 10px;
-              margin-bottom: 5px;
+              font-size: 11px;
+              margin-bottom: 3px;
+              color: #333;
             }
             .details {
               margin-bottom: 15px;
@@ -202,6 +204,7 @@ export const CaissierDashboard = () => {
               display: flex;
               justify-content: space-between;
               margin-bottom: 5px;
+              padding: 2px 0;
             }
             .services {
               margin: 15px 0;
@@ -228,37 +231,49 @@ export const CaissierDashboard = () => {
               font-size: 10px;
               border-top: 1px dashed #000;
               padding-top: 10px;
+              color: #666;
+            }
+            .paid-status {
+              background: #e8f5e8;
+              padding: 5px;
+              text-align: center;
+              font-weight: bold;
+              color: #2d5a2d;
+              border-radius: 3px;
+              margin: 10px 0;
             }
           </style>
         </head>
         <body>
           <div class="header">
-            <div class="title">SALON DE COIFFURE</div>
-            <div class="subtitle">${user?.salon?.name || 'Salon'}</div>
+            <div class="title">${user?.salon?.name || 'Salon'}</div>
             <div class="subtitle">Reçu de Paiement</div>
-            <div class="subtitle">#${rdv.id} - ${new Date().toLocaleDateString('fr-FR')} ${new Date().toLocaleTimeString('fr-FR')}</div>
+            <div class="subtitle">${new Date().toLocaleDateString('fr-FR')} ${new Date().toLocaleTimeString('fr-FR')}</div>
           </div>
           
           <div class="details">
             <div class="row">
-              <span>Client:</span>
+              <span><strong>Client:</strong></span>
               <span>${rdv.client?.fullName || ''}</span>
             </div>
+
             <div class="row">
-              <span>Coiffeur:</span>
+              <span><strong>Coiffeur:</strong></span>
               <span>${rdv.coiffeur?.fullName || 'Non assigné'}</span>
             </div>
             <div class="row">
-              <span>Date RDV:</span>
+              <span><strong>Date RDV:</strong></span>
               <span>${new Date(rdv.date).toLocaleDateString('fr-FR')}</span>
             </div>
             <div class="row">
-              <span>Heure:</span>
+              <span><strong>Heure:</strong></span>
               <span>${rdv.startTime} - ${rdv.endTime}</span>
             </div>
+
           </div>
           
           <div class="services">
+            <div style="font-weight: bold; margin-bottom: 8px;">Services:</div>
             ${services.map(service => `
               <div class="service-item">
                 <span>${service.name}</span>
@@ -273,18 +288,21 @@ export const CaissierDashboard = () => {
               <span>${subtotal} DH</span>
             </div>
             <div class="row">
-              <span>TOTAL:</span>
-              <span>${totalAmount} DH</span>
-            </div>
-            <div class="row">
-              <span>Statut:</span>
-              <span>Payé</span>
+              <span><strong>TOTAL PAYÉ:</strong></span>
+              <span><strong>${totalAmount} DH</strong></span>
             </div>
           </div>
           
+          <div class="paid-status">
+            ✅ PAIEMENT EFFECTUÉ
+          </div>
+          
           <div class="footer">
-            <div>Merci pour votre visite !</div>
-            <div>À bientôt</div>
+            <div>Merci pour votre confiance !</div>
+            <div>À très bientôt</div>
+            <div style="margin-top: 10px; font-size: 9px;">
+              ${user?.salon?.address || ''} | ${user?.salon?.phone || ''}
+            </div>
           </div>
         </body>
         </html>
@@ -375,6 +393,31 @@ export const CaissierDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Print Styles */}
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          @media print {
+            body * {
+              visibility: hidden;
+            }
+            .print-report,
+            .print-report * {
+              visibility: visible;
+            }
+            .print-report {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+              height: auto;
+              display: block !important;
+              background: white;
+              padding: 20px;
+            }
+          }
+        `
+      }} />
 
       <div className="max-w-7xl mx-auto p-6">
         {/* Header */}
@@ -554,6 +597,24 @@ export const CaissierDashboard = () => {
                             {rdv.totalPrice || 0} DH
                           </p>
                         </div>
+                        <div>
+                          <p className="text-sm text-gray-500 mb-1">État Paiement</p>
+                          <div className="flex items-center gap-2">
+                            {rdv.paymentStatus === 'PAID' ? (
+                              <>
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 border border-green-200">
+                                  ✅ Payé
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800 border border-red-200">
+                                  ❌ Non payé
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
                       </div>
                       <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
                         {getStatusBadge(rdv.status)}
@@ -606,12 +667,23 @@ export const CaissierDashboard = () => {
                               </Button>
                             </>
                           )}
-                          {rdv.status === 'COMPLETED' && (
+                          {rdv.status === 'COMPLETED' && rdv.paymentStatus !== 'PAID' && (
                             <Button
                               onClick={() => handleProcessPayment(rdv.id)}
                               className="bg-green-600 hover:bg-green-700 text-sm px-4 py-2"
                             >
                               💳 Paiement
+                            </Button>
+                          )}
+                          {rdv.status === 'COMPLETED' && rdv.paymentStatus === 'PAID' && (
+                            <Button
+                              onClick={() => handlePrintReceipt(rdv)}
+                              className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm px-4 py-2 flex items-center gap-2 shadow-md hover:shadow-lg transition-all duration-200 transform hover:scale-105"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 001-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 001 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                              </svg>
+                              Réimprimer reçu
                             </Button>
                           )}
                         </div>

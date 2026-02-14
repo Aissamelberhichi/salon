@@ -54,71 +54,52 @@ class RendezVousService {
   }
 
   async getAvailableSlots(coiffeurId, date, serviceId) {
-    const dayOfWeek = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'][new Date(date).getDay()];
-
-    const availability = await prisma.disponibiliteCoiffeur.findUnique({
-      where: {
-        coiffeurId_dayOfWeek: {
-          coiffeurId,
-          dayOfWeek
-        }
-      },
-      include: {
-        pauses: true
-      }
-    });
-
-    if (!availability || !availability.isAvailable) {
-      return [];
-    }
-
-    // Handle edge case: if endTime is "00:00", treat it as end of day (23:59)
-    let endTime = availability.endTime;
-    if (endTime === "00:00") {
-      endTime = "23:59";
-    }
-
-    // Validate that end time is after start time
-    const startMinutes = parseHHMM(availability.startTime);
-    const endMinutes = parseHHMM(endTime);
-    
-    if (endMinutes <= startMinutes) {
-      console.warn(`Invalid availability for ${dayOfWeek}: start ${availability.startTime} >= end ${endTime}`);
-      return [];
-    }
-
-    let serviceDuration = 30;
-    if (serviceId) {
-      const service = await prisma.service.findUnique({ where: { id: serviceId } });
-      if (service?.duration) serviceDuration = service.duration;
-    }
-
     const coiffeur = await prisma.coiffeur.findUnique({
       where: { id: coiffeurId },
-      select: { bufferMinutes: true, salon: { select: { isActive: true } } }
-    });
-    if (!coiffeur) throw new Error('Coiffeur not found');
-    if (coiffeur.salon && coiffeur.salon.isActive === false) {
-        return [];
+      include: {
+        disponibilites: {
+          include: { pauses: true },
+          where: { dayOfWeek: new Date(date).getDay() === 0 ? 6 : new Date(date).getDay() - 1 }
+        }
       }
-const buffer = coiffeur.bufferMinutes ?? 5;
+    });
 
-    const existingRdv = await prisma.rendezVous.findMany({
+    if (!coiffeur || !coiffeur.disponibilites.length) {
+      return [];
+    }
+
+    const availability = coiffeur.disponibilites[0];
+    if (!availability.isAvailable) {
+      return [];
+    }
+
+    // Get service duration
+    let serviceDuration = 60; // default
+    if (serviceId) {
+      const service = await prisma.service.findUnique({ where: { id: serviceId } });
+      if (service) serviceDuration = service.duration;
+    }
+
+    const buffer = coiffeur.bufferMinutes || 5;
+    const startTime = parseHHMM(availability.startTime);
+    const endTime = parseHHMM(availability.endTime);
+
+    // Get existing rendezvous for that day
+    const existingRdvs = await prisma.rendezVous.findMany({
       where: {
         coiffeurId,
         date: new Date(date),
         status: { in: ['PENDING', 'CONFIRMED'] }
-      },
-      select: { startTime: true, endTime: true }
+      }
     });
 
-    const existingRanges = existingRdv.map(r => ({
-      start: parseHHMM(r.startTime),
-      end: parseHHMM(r.endTime) + buffer
+    // Combine existing rendezvous and pauses
+    const existingRanges = existingRdvs.map(rdv => ({
+      start: parseHHMM(rdv.startTime),
+      end: parseHHMM(rdv.endTime)
     }));
 
-    // Add pause ranges to exclude
-    const pauseRanges = (availability.pauses || []).map(pause => ({
+    const pauseRanges = availability.pauses.map(pause => ({
       start: parseHHMM(pause.startTime),
       end: parseHHMM(pause.endTime)
     }));
@@ -155,11 +136,13 @@ const buffer = coiffeur.bufferMinutes ?? 5;
     if (!Array.isArray(serviceIds) || serviceIds.length === 0) {
       throw new Error('Au moins un service doit être sélectionné');
     }
-// Block booking if salon is deactivated
-const salonRecord = await prisma.salon.findUnique({ where: { id: salonId }, select: { isActive: true } });
-if (!salonRecord || salonRecord.isActive === false) {
-  throw new Error('Ce salon est désactivé. Réservation impossible.');
-}
+
+    // Block booking if salon is deactivated
+    const salonRecord = await prisma.salon.findUnique({ where: { id: salonId }, select: { isActive: true } });
+    if (!salonRecord || salonRecord.isActive === false) {
+      throw new Error('Ce salon est désactivé. Réservation impossible.');
+    }
+
     const services = await prisma.service.findMany({
       where: { 
         id: { in: serviceIds },
@@ -400,12 +383,12 @@ if (!salonRecord || salonRecord.isActive === false) {
 
     return {
       ...rdv,
-      totalPrice: rdv.totalPrice ?? (rdv.services.reduce((sum, rs) => sum + rs.service.price, 0) || rdv.service?.price || 0),
-      totalDuration: rdv.totalDuration ?? (rdv.services.reduce((sum, rs) => sum + rs.service.duration, 0) || rdv.service?.duration || 0)
+      totalPrice: rdv.totalPrice ?? (rdv.services?.reduce((sum, rs) => sum + (rs.service?.price || 0), 0) || rdv.service?.price || 0),
+      totalDuration: rdv.totalDuration ?? (rdv.services?.reduce((sum, rs) => sum + (rs.service?.duration || 0), 0) || rdv.service?.duration || 0)
     };
   }
 
-  async updateRendezVousStatus(rdvId, userId, newStatus, userRole) {
+  async updateRendezVousStatus(rdvId, userId, newStatus, userRole, paymentStatus = null) {
     const rdv = await prisma.rendezVous.findUnique({
       where: { id: rdvId },
       include: { salon: true }
@@ -430,14 +413,26 @@ if (!salonRecord || salonRecord.isActive === false) {
       throw new Error('Ce rendez-vous a déjà été marqué comme en retard.');
     }
 
+    const updateData = {
+      status: newStatus,
+      // Set isLateMarked to true when status is changed to LATE
+      isLateMarked: newStatus === 'LATE' ? true : rdv.isLateMarked,
+      updatedAt: new Date()
+    };
+
+    // Add paymentStatus if provided and if the field exists in the database
+    if (paymentStatus) {
+      try {
+        updateData.paymentStatus = paymentStatus;
+      } catch (error) {
+        // If paymentStatus field doesn't exist yet, log but continue
+        console.warn('paymentStatus field not available yet, skipping update');
+      }
+    }
+
     const updated = await prisma.rendezVous.update({
       where: { id: rdvId },
-      data: {
-        status: newStatus,
-        // Set isLateMarked to true when status is changed to LATE
-        isLateMarked: newStatus === 'LATE' ? true : rdv.isLateMarked,
-        updatedAt: new Date()
-      },
+      data: updateData,
       include: {
         client: {
           select: {

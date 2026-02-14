@@ -175,9 +175,9 @@ export const SalonCoiffeurs = () => {
         <div className="max-w-3xl mx-auto bg-white rounded-lg shadow p-8 text-center">
           <h1 className="text-2xl font-bold mb-2">Aucun salon trouvé</h1>
           <p className="text-gray-600 mb-6">
-            Vous devez d'abord créer votre salon avant d'ajouter des coiffeurs.
+            Veuillez contacter l'administrateur pour créer votre salon.
           </p>
-          <Button onClick={() => navigate('/salon/create')}>Créer mon salon</Button>
+          <Button onClick={() => navigate('/salon/dashboard')}>Retour au dashboard</Button>
         </div>
       </div>
     );

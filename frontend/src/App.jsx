@@ -8,8 +8,9 @@ import { RegisterSalon } from './pages/RegisterSalon';
 import { SalonPendingValidation } from './pages/SalonPendingValidation';
 import { VerifyEmail } from './pages/VerifyEmail';
 import { ResendVerification } from './pages/ResendVerification';
+import { ForgotPassword } from './pages/ForgotPassword';
+import { ResetPassword } from './pages/ResetPassword';
 import { Dashboard } from './pages/Dashboard';
-import { CreateSalon } from './pages/salon/CreateSalon';
 import { SalonDashboard } from './pages/salon/SalonDashboard';
 import { SalonImages } from './pages/salon/SalonImages';
 import { SalonHours } from './pages/salon/SalonHours';
@@ -19,10 +20,11 @@ import { SalonServices } from './pages/salon/SalonServices';
 import { SalonCoiffeurs } from './pages/salon/SalonCoiffeurs';
 import { SalonCaissiers } from './pages/salon/SalonCaissiers';
 import { SalonList } from './pages/client/SalonList';
-import { SalonDetail } from './pages/client/SalonDetail';
 import { MyReservations } from './pages/client/MyReservations';
 import FindSalons from './pages/client/FindSalons';
-import SalonProfile from './pages/client/SalonProfile';
+import { SalonDetail } from './pages/client/SalonDetail';
+import { SalonProfile } from './pages/client/SalonProfile';
+import { ClientProfile } from './pages/client/ClientProfile';
 import { Favorites } from './pages/client/Favorites';
 import { SalonReservations } from './pages/salon/SalonReservations';
 import { Navbar } from './components/layout/Navbar';
@@ -69,6 +71,24 @@ const PublicRoute = ({ children }) => {
 
   return children;
 };
+
+// Route spéciale pour les pages de réinitialisation (pas de vérification d'auth)
+const ResetPasswordRoute = ({ children }) => {
+  const { loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+      </div>
+    );
+  }
+
+  // Ne pas rediriger même si l'utilisateur est connecté
+  // Permettre l'accès à la réinitialisation du mot de passe
+  return children;
+};
+
 const RoleRoute = ({ roles, children }) => {
   const { user, loading } = useAuth();
 
@@ -135,12 +155,15 @@ function AppRoutes() {
       <Route path="/verify-email" element={<VerifyEmail />} />
       <Route path="/resend-verification" element={<ResendVerification />} />
       
+      {/* Routes Mot de Passe Oublié */}
+      <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
+      <Route path="/reset-password" element={<ResetPasswordRoute><ResetPassword /></ResetPasswordRoute>} />
+      
       {/* Dashboard principal - redirige selon le rôle */}
       <Route path="/dashboard" element={<PrivateRoute><RoleBasedDashboard /></PrivateRoute>} />
       
       {/* Routes Salon (Sprint 2) */}
       {/* Routes Salon */}
-      <Route path="/salon/create" element={<RoleRoute roles={['SALON_OWNER']}><CreateSalon /></RoleRoute>} />
       <Route path="/salon/dashboard" element={<RoleRoute roles={['SALON_OWNER']}><SalonDashboard /></RoleRoute>} />
       <Route path="/salon/images" element={<RoleRoute roles={['SALON_OWNER']}><SalonImages /></RoleRoute>} />
       <Route path="/salon/hours" element={<RoleRoute roles={['SALON_OWNER']}><SalonHours /></RoleRoute>} />
@@ -152,7 +175,8 @@ function AppRoutes() {
       <Route path="/salon/reservations" element={<RoleRoute roles={['SALON_OWNER']}><SalonReservations /></RoleRoute>} />
 
       {/* Routes Client (publiques/protégées) */}
-      <Route path="/salons" element={<FindSalons />} />
+      <Route path="/profile" element={<RoleRoute roles={['CLIENT']}><ClientProfile /></RoleRoute>} />
+      <Route path="/salons" element={<RoleRoute roles={['CLIENT']}><FindSalons /></RoleRoute>} />
       <Route path="/salons/list" element={<SalonList />} />
       <Route path="/salons/:id" element={<SalonProfile />} />
       <Route path="/salons/:id/book" element={<SalonDetail />} />

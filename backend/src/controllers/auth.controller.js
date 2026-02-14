@@ -156,6 +156,16 @@ class AuthController {
         }
       }
 
+      // S'assurer que emailVerified est inclus
+      if (!userData.emailVerified) {
+        const prisma = require('../config/database');
+        const user = await prisma.user.findUnique({
+          where: { id: req.user.id },
+          select: { emailVerified: true }
+        });
+        userData = { ...userData, emailVerified: user.emailVerified };
+      }
+
       res.status(200).json({ user: userData });
     } catch (error) {
       next(error);

@@ -53,7 +53,7 @@ export const SalonDashboard = () => {
       setSalon(data);
     } catch (err) {
       if (err.response?.status === 404) {
-        navigate('/salon/create');
+        setError('Aucun salon trouvé. Veuillez contacter l\'administrateur.');
       } else {
         setError(err.response?.data?.error || 'Erreur lors du chargement');
       }

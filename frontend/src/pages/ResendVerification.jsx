@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Input } from '../components/common/Input';
 import { Button } from '../components/common/Button';
+import { authAPI } from '../services/api';
 
 export const ResendVerification = () => {
   const navigate = useNavigate();
@@ -19,33 +20,14 @@ export const ResendVerification = () => {
     console.log('📧 Tentative de renvoi d\'email de vérification pour:', email);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5003'}/email/resend-verification`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email }),
-      });
-
-      console.log('📋 Réponse du serveur:', response.status, response.statusText);
-
-      const data = await response.json();
-      console.log('📋 Données reçues:', data);
-
-      if (response.ok) {
-        setStatus('success');
-        setMessage(data.message || 'Email de vérification renvoyé avec succès !');
-        console.log('✅ Email de vérification renvoyé avec succès');
-      } else {
-        setStatus('error');
-        setError(data.message || 'Erreur lors de l\'envoi de l\'email');
-        console.log('❌ Erreur serveur:', data.message);
-      }
+      const response = await authAPI.resendVerificationEmail(email);
+      setStatus('success');
+      setMessage(response.message || 'Email de vérification renvoyé avec succès !');
+      console.log('✅ Email de vérification renvoyé avec succès');
     } catch (err) {
       setStatus('error');
-      setError('Une erreur est survenue. Veuillez réessayer plus tard.');
-      console.error('❌ Erreur catch:', err);
-      console.error('📋 Détails de l\'erreur:', err.message);
+      setError(err.response?.data?.message || 'Une erreur est survenue. Veuillez réessayer plus tard.');
+      console.error('❌ Erreur API:', err);
     }
   };
 

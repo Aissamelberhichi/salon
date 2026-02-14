@@ -31,7 +31,8 @@ const authenticate = async (req, res, next) => {
         email: true,
         phone: true,
         role: true,
-        isActive: true
+        isActive: true,
+        emailVerified: true
       }
     });
 

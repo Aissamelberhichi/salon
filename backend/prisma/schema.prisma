@@ -183,7 +183,6 @@ model Coiffeur {
 
   @@map("coiffeurs")
 }
-// Ajouter après le modèle Coiffeur
 
 enum RendezVousStatus {
   PENDING
@@ -192,6 +191,11 @@ enum RendezVousStatus {
   COMPLETED
   NO_SHOW
   LATE
+}
+
+enum PaymentStatus {
+  PAID
+  NOT_PAID
 }
 
 enum Gender {
@@ -226,6 +230,7 @@ model RendezVous {
   endTime     String            @map("end_time")
   status      RendezVousStatus  @default(PENDING)
   isLateMarked Boolean          @default(false) @map("is_late_marked")
+  paymentStatus PaymentStatus    @default(NOT_PAID) @map("payment_status")
   notes       String?
   createdAt   DateTime          @default(now()) @map("created_at")
   updatedAt   DateTime          @updatedAt @map("updated_at")

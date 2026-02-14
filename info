@@ -5,8 +5,12 @@ taskkill /f /im node.exe
  npx prisma studio // db on the brower
  
 git add .
-git commit -m "Login validation"
-git push origin main
+git commit -m "ForgotPassword "
+git push origin Login-Validation
+
+
+git checkout -b Login-Validation
+
 
 admin : admin@salon-saas.com / admin123
 ------------------------------------
@@ -14,3 +18,8 @@ integration de OpenStreetMap
 npm install react-leaflet leaflet
 npm install react-leaflet@4 leaflet
 ------------------------------------
+restauré
+git branch
+git fetch origin
+git reset --hard origin/Login-Validation
+git clean -fd

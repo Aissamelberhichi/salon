@@ -683,3 +683,4 @@ const FindSalons = () => {
 };
 
 export default FindSalons;
+export { FindSalons };

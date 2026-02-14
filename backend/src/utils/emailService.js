@@ -40,108 +40,39 @@ class EmailService {
   }
 
   // Envoyer l'email de vérification
-  async sendVerificationEmail(email, verificationToken, fullName) {
-    const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
-    
+  async sendVerificationEmail(email, token, fullName) {
+    // MODE TEST TEMPORAIRE - désactiver l'envoi d'email réel
+    console.log('🔍 NODE_ENV:', process.env.NODE_ENV);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📧 MODE TEST - Email de vérification non envoyé');
+      console.log('📧 Email destinataire:', email);
+      console.log('📧 Token de vérification:', token);
+      console.log('📧 Nom complet:', fullName);
+      console.log('📧 URL de vérification:', `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email?token=${token}`);
+      
+      return {
+        messageId: 'test-mode',
+        preview: `Email de vérification envoyé à ${email} avec le token ${token}`
+      };
+    }
+
+    // Code original pour la production
+    const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
     const mailOptions = {
-      from: `"Coifure App" <${process.env.EMAIL_FROM || 'noreply@coifure.com'}>`,
+      from: `"Coifure App" <${process.env.EMAIL_FROM}>`,
       to: email,
-      subject: 'Vérifiez votre adresse email - Coifure App',
-      html: this.getVerificationEmailTemplate(fullName, verificationUrl)
+      subject: 'Vérifiez votre adresse email',
+      html: this.generateVerificationEmailHtml(email, token, fullName)
     };
 
     try {
-      await this.transporter.sendMail(mailOptions);
-      console.log('Email de vérification envoyé à:', email);
-      return true;
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log('✅ Email de vérification envoyé:', info.messageId);
+      return info;
     } catch (error) {
-      console.error('Erreur lors de l\'envoi de l\'email:', error);
-      throw new Error('Impossible d\'envoyer l\'email de vérification');
+      console.error('❌ Erreur lors de l\'envoi de l\'email de vérification:', error);
+      throw error;
     }
-  }
-
-  // Template HTML pour l'email de vérification
-  getVerificationEmailTemplate(fullName, verificationUrl) {
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Vérification Email - Coifure App</title>
-        <style>
-          body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f9fafb;
-          }
-          .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-            border-radius: 10px 10px 0 0;
-          }
-          .content {
-            background: white;
-            padding: 40px;
-            border-radius: 0 0 10px 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-          }
-          .button {
-            display: inline-block;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 15px 30px;
-            text-decoration: none;
-            border-radius: 5px;
-            font-weight: bold;
-            margin: 20px 0;
-          }
-          .footer {
-            text-align: center;
-            margin-top: 30px;
-            color: #666;
-            font-size: 14px;
-          }
-          .logo {
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 10px;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <div class="logo">💇 Coifure App</div>
-          <h1>Bienvenue ${fullName} !</h1>
-        </div>
-        
-        <div class="content">
-          <h2>Merci de vous être inscrit !</h2>
-          <p>Pour activer votre compte et accéder à toutes les fonctionnalités de Coifure App, veuillez vérifier votre adresse email en cliquant sur le bouton ci-dessous :</p>
-          
-          <a href="${verificationUrl}" class="button">Vérifier mon adresse email</a>
-          
-          <p><strong>Important :</strong> Ce lien expirera dans 24 heures.</p>
-          
-          <p>Si vous n'avez pas créé de compte sur Coifure App, vous pouvez ignorer cet email.</p>
-          
-          <p>Si le bouton ne fonctionne pas, copiez et collez ce lien dans votre navigateur :</p>
-          <p style="word-break: break-all; color: #667eea; font-size: 12px;">${verificationUrl}</p>
-        </div>
-        
-        <div class="footer">
-          <p>Cet email a été envoyé automatiquement. Ne répondez pas à cet email.</p>
-          <p>&copy; 2024 Coifure App. Tous droits réservés.</p>
-        </div>
-      </body>
-      </html>
-    `;
   }
 
   // Envoyer l'email de réinitialisation de mot de passe
