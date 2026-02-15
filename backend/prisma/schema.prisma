@@ -68,6 +68,7 @@ model Salon {
   email       String?
   website     String?
   isActive    Boolean        @default(true) @map("is_active")
+  averageRating Decimal?    @default(0) @db.Decimal(3, 2) @map("average_rating")
   createdAt   DateTime       @default(now()) @map("created_at")
   updatedAt   DateTime       @updatedAt @map("updated_at")
   

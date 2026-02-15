@@ -323,6 +323,38 @@ export const Navbar = () => {
                                 <span>Localisation</span>
                               </Link>
                               <Link
+                                to="/salon/services"
+                                className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 rounded-xl transition-colors"
+                                onClick={() => setIsDropdownOpen(false)}
+                              >
+                                <ScissorsIcon className="h-5 w-5 text-gray-400" />
+                                <span>Services</span>
+                              </Link>
+                              <Link
+                                to="/salon/coiffeurs"
+                                className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 rounded-xl transition-colors"
+                                onClick={() => setIsDropdownOpen(false)}
+                              >
+                                <UserGroupIcon className="h-5 w-5 text-gray-400" />
+                                <span>Équipe</span>
+                              </Link>
+                              <Link
+                                to="/salon/reservations"
+                                className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 rounded-xl transition-colors"
+                                onClick={() => setIsDropdownOpen(false)}
+                              >
+                                <CalendarIcon className="h-5 w-5 text-gray-400" />
+                                <span>Réservations</span>
+                              </Link>
+                              <Link
+                                to="/salon/analytics"
+                                className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 rounded-xl transition-colors"
+                                onClick={() => setIsDropdownOpen(false)}
+                              >
+                                <ChartBarIcon className="h-5 w-5 text-gray-400" />
+                                <span>Statistiques</span>
+                              </Link>
+                              <Link
                                 to="/salon/caissiers"
                                 className="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-purple-50 rounded-xl transition-colors"
                                 onClick={() => setIsDropdownOpen(false)}

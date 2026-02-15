@@ -218,7 +218,7 @@ class RendezVousService {
     }
 
     const totalDuration = services.reduce((sum, s) => sum + s.duration, 0);
-    const totalPrice = services.reduce((sum, s) => sum + s.price, 0);
+    const totalPrice = services.reduce((sum, s) => sum + parseFloat(s.price || 0), 0);
 
     const coiffeur = await prisma.coiffeur.findUnique({
       where: { id: coiffeurId },
@@ -341,7 +341,9 @@ class RendezVousService {
 
     return rdvs.map(rdv => ({
       ...rdv,
-      totalPrice: rdv.totalPrice ?? (rdv.services.reduce((sum, rs) => sum + rs.service.price, 0) || rdv.service?.price || 0),
+      totalPrice: rdv.totalPrice
+        ? parseFloat(rdv.totalPrice)
+        : (rdv.services.reduce((sum, rs) => sum + parseFloat(rs.service.price || 0), 0) || parseFloat(rdv.service?.price || 0) || 0),
       totalDuration: rdv.totalDuration ?? (rdv.services.reduce((sum, rs) => sum + rs.service.duration, 0) || rdv.service?.duration || 0)
     }));
   }
@@ -370,7 +372,9 @@ class RendezVousService {
 
     return rdvs.map(rdv => ({
       ...rdv,
-      totalPrice: rdv.totalPrice ?? (rdv.services?.reduce((sum, rs) => sum + (rs.service?.price || 0), 0) || rdv.service?.price || 0),
+      totalPrice: rdv.totalPrice
+        ? parseFloat(rdv.totalPrice)
+        : (rdv.services?.reduce((sum, rs) => sum + parseFloat(rs.service?.price || 0), 0) || parseFloat(rdv.service?.price || 0) || 0),
       totalDuration: rdv.totalDuration ?? (rdv.services?.reduce((sum, rs) => sum + (rs.service?.duration || 0), 0) || rdv.service?.duration || 0)
     }));
   }
@@ -407,7 +411,9 @@ class RendezVousService {
 
     return rdvs.map(rdv => ({
       ...rdv,
-      totalPrice: rdv.totalPrice ?? (rdv.services.reduce((sum, rs) => sum + rs.service.price, 0) || rdv.service?.price || 0),
+      totalPrice: rdv.totalPrice
+        ? parseFloat(rdv.totalPrice)
+        : (rdv.services.reduce((sum, rs) => sum + parseFloat(rs.service.price || 0), 0) || parseFloat(rdv.service?.price || 0) || 0),
       totalDuration: rdv.totalDuration ?? (rdv.services.reduce((sum, rs) => sum + rs.service.duration, 0) || rdv.service?.duration || 0)
     }));
   }
@@ -446,7 +452,9 @@ class RendezVousService {
 
     return {
       ...rdv,
-      totalPrice: rdv.totalPrice ?? (rdv.services?.reduce((sum, rs) => sum + (rs.service?.price || 0), 0) || rdv.service?.price || 0),
+      totalPrice: rdv.totalPrice
+        ? parseFloat(rdv.totalPrice)
+        : (rdv.services?.reduce((sum, rs) => sum + parseFloat(rs.service?.price || 0), 0) || parseFloat(rdv.service?.price || 0) || 0),
       totalDuration: rdv.totalDuration ?? (rdv.services?.reduce((sum, rs) => sum + (rs.service?.duration || 0), 0) || rdv.service?.duration || 0)
     };
   }

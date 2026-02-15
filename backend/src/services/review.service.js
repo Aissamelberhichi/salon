@@ -82,6 +82,25 @@ class ReviewService {
       where: { id: reviewId }
     });
   }
+
+  async updateSalonAverageRating(salonId) {
+    // Calculate average rating from all reviews for this salon
+    const reviews = await prisma.review.findMany({
+      where: { salonId },
+      select: { rating: true }
+    });
+
+    const averageRating = reviews.length > 0
+      ? (reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length).toFixed(2)
+      : 0;
+
+    // Update the salon's average rating
+    return prisma.salon.update({
+      where: { id: salonId },
+      data: { averageRating: parseFloat(averageRating) },
+      select: { id: true, averageRating: true }
+    });
+  }
 }
 
 module.exports = new ReviewService();

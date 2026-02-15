@@ -89,6 +89,22 @@ class RendezVousController {
     try {
       const { salonId } = req.params;
       const { status, date } = req.query;
+
+      // Verify salon ownership for SALON_OWNER role
+      if (req.user.role === 'SALON_OWNER') {
+        const salon = await prisma.salon.findUnique({
+          where: { id: salonId }
+        });
+
+        if (!salon) {
+          return res.status(404).json({ error: 'Salon not found' });
+        }
+
+        if (salon.ownerId !== req.user.id) {
+          return res.status(403).json({ error: 'Unauthorized: You do not own this salon' });
+        }
+      }
+
       const rdvs = await rdvService.getSalonRendezVous(salonId, status, date);
       res.status(200).json(rdvs);
     } catch (error) {

@@ -163,7 +163,19 @@ export const rdvAPI = {
   setCoiffeurDisponibilite: (coiffeurId, disponibilites) => 
     api.post(`/rdv/coiffeur/${coiffeurId}/disponibilite`, { disponibilites }),
   getCoiffeurDisponibilites: (coiffeurId) => 
-    api.get(`/rdv/coiffeur/${coiffeurId}/disponibilites`)
+    api.get(`/rdv/coiffeur/${coiffeurId}/disponibilites`),
+    
+  // Statistiques pour le dashboard
+  getSalonStats: (salonId, params) => 
+    api.get(`/rdv/salon/${salonId}/stats`, { params }),
+  getSalonClients: (salonId) => 
+    api.get(`/rdv/salon/${salonId}/clients`),
+  getRecentAppointments: (salonId, params = {}) => 
+    api.get(`/rdv/salon/${salonId}/recent`, { params }),
+    
+  // Statistiques de revenus
+  getSalonRevenue: (salonId, params) => 
+    api.get(`/rdv/salon/${salonId}/revenue`, { params })
 };
 
 export const favoriteAPI = {

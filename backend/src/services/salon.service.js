@@ -120,6 +120,18 @@ async getMySalon(ownerId) {
       },
       coiffeurs: {
         orderBy: { fullName: 'asc' }
+      },
+      reviews: {
+        orderBy: { createdAt: 'desc' },
+        include: {
+          client: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true
+            }
+          }
+        }
       }
     }
   });
