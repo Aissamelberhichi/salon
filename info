@@ -5,7 +5,7 @@ taskkill /f /im node.exe
  npx prisma studio // db on the brower
  
 git add .
-git commit -m "Horaires"
+git commit -m "dashboard salon"
 git push origin Login-Validation
 
 

@@ -27,6 +27,7 @@ import { SalonProfile } from './pages/client/SalonProfile';
 import { ClientProfile } from './pages/client/ClientProfile';
 import { Favorites } from './pages/client/Favorites';
 import { SalonReservations } from './pages/salon/SalonReservations';
+import { SalonAnalytics } from './pages/salon/SalonAnalytics';
 import { Navbar } from './components/layout/Navbar';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
 import { AdminSalons } from './pages/admin/AdminSalons';
@@ -173,6 +174,7 @@ function AppRoutes() {
       <Route path="/salon/coiffeurs" element={<RoleRoute roles={['SALON_OWNER']}><SalonCoiffeurs /></RoleRoute>} />
       <Route path="/salon/caissiers" element={<RoleRoute roles={['SALON_OWNER']}><SalonCaissiers /></RoleRoute>} />
       <Route path="/salon/reservations" element={<RoleRoute roles={['SALON_OWNER']}><SalonReservations /></RoleRoute>} />
+      <Route path="/salon/analytics" element={<RoleRoute roles={['SALON_OWNER']}><SalonAnalytics /></RoleRoute>} />
 
       {/* Routes Client (publiques/protégées) */}
       <Route path="/profile" element={<RoleRoute roles={['CLIENT']}><ClientProfile /></RoleRoute>} />
